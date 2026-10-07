@@ -2,15 +2,33 @@
 
 namespace Tests;
 
+use App\Enums\AccessPermission;
+use App\Models\Project;
+use App\Models\ProjectAccess;
+use App\Models\User;
+use App\Support\SessionLogin;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Laravel\Fortify\Features;
 
 abstract class TestCase extends BaseTestCase
 {
-    protected function skipUnlessFortifyHas(string $feature, ?string $message = null): void
+    protected function setUp(): void
     {
-        if (! Features::enabled($feature)) {
-            $this->markTestSkipped($message ?? "Fortify feature [{$feature}] is not enabled.");
-        }
+        parent::setUp();
+        $this->withoutVite();
+    }
+
+    /** 実際のログインと同じくセッション版を設定してログイン状態にする */
+    protected function loginAs(User $user): static
+    {
+        return $this->actingAs($user)->withSession([SessionLogin::VERSION_KEY => $user->session_version]);
+    }
+
+    protected function grant(User $contractor, Project $project, AccessPermission $permission): void
+    {
+        ProjectAccess::create([
+            'user_id' => $contractor->id,
+            'project_id' => $project->id,
+            'permission' => $permission,
+        ]);
     }
 }

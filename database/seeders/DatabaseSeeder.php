@@ -2,24 +2,19 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Support\DemoMode;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
+    /** 既定の Seeder はデモデータのみ。本番では実行できない。 */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (! DemoMode::seedingAllowed()) {
+            throw new RuntimeException('デモデータは local / testing 環境でのみ投入できます。');
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $this->call(DemoSeeder::class);
     }
 }

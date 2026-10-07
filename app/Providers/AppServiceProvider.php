@@ -2,49 +2,49 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
-    {
-        $this->configureDefaults();
-    }
-
-    /**
-     * Configure default behaviors for production-ready applications.
-     */
-    protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
 
-        DB::prohibitDestructiveCommands(
-            app()->isProduction(),
-        );
+        // 本番では migrate:fresh / db:wipe 等の破壊的コマンドを禁止
+        DB::prohibitDestructiveCommands(app()->isProduction());
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        $this->configureGates();
+        $this->configureRateLimiting();
+    }
+
+    private function configureGates(): void
+    {
+        Gate::define('admin', fn (User $user) => $user->is_active && $user->isAdmin());
+        Gate::define('manage-projects', fn (User $user) => $user->is_active && $user->isInternal());
+        // AI 候補は社内メンバー本人のみ（外注・TV 不可）
+        Gate::define('use-imports', fn (User $user) => $user->is_active && $user->isInternal());
+        // TV 表示：TV 専用と社内メンバー（外注不可）
+        Gate::define('view-tv', fn (User $user) => $user->is_active && ($user->isTv() || $user->isInternal()));
+    }
+
+    private function configureRateLimiting(): void
+    {
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()?->id ?? $request->ip())));
     }
 }

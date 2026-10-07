@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Google ログイン（Socialite）。接続情報は別工程で用意する。未設定ならログイン画面に「未接続」と表示。
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
 ];
