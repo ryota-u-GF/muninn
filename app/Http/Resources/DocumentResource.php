@@ -44,6 +44,7 @@ class DocumentResource extends JsonResource
             'can' => [
                 'update' => Gate::forUser($viewer)->allows('update', $this->resource),
                 'delete' => Gate::forUser($viewer)->allows('delete', $this->resource),
+                'restore' => Gate::forUser($viewer)->allows('restore', $this->resource),
                 'change_visibility' => $this->created_by === $viewer->id && $viewer->isInternal(),
                 'change_project' => $viewer->isInternal(),
             ],

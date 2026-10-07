@@ -1,10 +1,8 @@
 import inertia from '@inertiajs/vite';
-import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 export default defineConfig({
@@ -12,11 +10,6 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
         inertia(),
         react(),
@@ -24,11 +17,11 @@ export default defineConfig({
             presets: [reactCompilerPreset()],
         }),
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
     ]),
     server: {
+        host: '0.0.0.0',
+        port: Number(process.env.VITE_PORT ?? 5174),
+        hmr: { host: 'localhost' },
         watch: {
             ignored: [
                 '**/.agents/**',
@@ -39,6 +32,13 @@ export default defineConfig({
             ],
         },
     },
+    resolve: {
+        alias: { '@': new URL('./resources/js', import.meta.url).pathname },
+    },
+    test: {
+        include: ['tests/js/**/*.test.ts'],
+        environment: 'node',
+    },
     lint: {
         ignorePatterns: [
             'vendor/**',
@@ -46,10 +46,7 @@ export default defineConfig({
             'public/**',
             'bootstrap/ssr/**',
             'tailwind.config.js',
-            'resources/js/actions/**',
             'resources/js/components/ui/*',
-            'resources/js/routes/**',
-            'resources/js/wayfinder/**',
         ],
         options: {
             denyWarnings: true,

@@ -1,7 +1,19 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    CalendarRange,
+    ClipboardList,
+    FileText,
+    FolderKanban,
+    History,
+    KanbanSquare,
+    NotebookPen,
+    ShieldCheck,
+    Sparkles,
+    Sun,
+    Tv,
+    Users,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -13,38 +25,50 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
+    const { auth } = usePage().props;
+    const role = auth.user?.role;
+    const internal = role === 'admin' || role === 'employee';
+
+    const tasks: NavItem[] = [
+        { title: 'タスクボード', href: '/', icon: KanbanSquare },
+        { title: '今日', href: '/today', icon: Sun },
+        { title: '自分のタスク', href: '/my-tasks', icon: ClipboardList },
+        { title: '担当者一覧', href: '/people', icon: Users },
+        { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
+    ];
+    const docs: NavItem[] = [
+        { title: '文書', href: '/documents', icon: FileText },
+        { title: '議事録', href: '/minutes', icon: NotebookPen },
+        { title: '変更履歴', href: '/history', icon: History },
+    ];
+    const manage: NavItem[] = [];
+    if (internal) {
+        manage.push({ title: '案件', href: '/projects', icon: FolderKanban });
+        manage.push({
+            title: 'AI候補（本人のみ）',
+            href: '/imports',
+            icon: Sparkles,
+        });
+        manage.push({ title: 'TV表示', href: '/tv', icon: Tv });
+    }
+    if (role === 'admin') {
+        manage.push({
+            title: '権限・利用者',
+            href: '/admin/access',
+            icon: ShieldCheck,
+        });
+    }
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href="/" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -53,11 +77,12 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain label="タスク" items={tasks} />
+                <NavMain label="文書" items={docs} />
+                {manage.length > 0 && <NavMain label="管理" items={manage} />}
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

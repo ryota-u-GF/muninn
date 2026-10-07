@@ -42,6 +42,7 @@ class TaskResource extends JsonResource
             'can' => [
                 'update' => Gate::forUser($viewer)->allows('update', $this->resource),
                 'delete' => Gate::forUser($viewer)->allows('delete', $this->resource),
+                'restore' => Gate::forUser($viewer)->allows('restore', $this->resource),
                 'change_visibility' => $this->created_by === $viewer->id && $internal,
                 'change_project' => $internal,
                 'change_assignees' => $internal,

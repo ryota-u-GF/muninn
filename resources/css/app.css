@@ -9,9 +9,9 @@
 
 @theme {
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo,
+        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -139,5 +139,24 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* TV 画面休憩：時計とロゴをゆっくり動かす（prefers-reduced-motion では使用しない） */
+@keyframes gf-drift {
+    0% {
+        transform: translate(0, 0);
+    }
+    25% {
+        transform: translate(18vw, -12vh);
+    }
+    50% {
+        transform: translate(28vw, 14vh);
+    }
+    75% {
+        transform: translate(-6vw, 20vh);
+    }
+    100% {
+        transform: translate(0, 0);
     }
 }

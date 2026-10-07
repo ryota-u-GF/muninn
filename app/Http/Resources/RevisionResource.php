@@ -68,8 +68,9 @@ class RevisionResource extends JsonResource
             'changed' => $before !== null && $after !== null
                 ? array_values(array_keys(array_filter($after, fn ($v, $k) => ($before[$k] ?? null) !== $v, ARRAY_FILTER_USE_BOTH)))
                 : [],
-            'before' => $this->when($this->withSnapshots, $before),
-            'after' => $this->when($this->withSnapshots, $after),
+            // 監査記録（案件・権限・利用者）は閲覧者が限定されるため一覧にも内容を含める
+            'before' => $this->when($this->withSnapshots || ! in_array($this->entity_type, ['task', 'document'], true), $before),
+            'after' => $this->when($this->withSnapshots || ! in_array($this->entity_type, ['task', 'document'], true), $after),
         ];
     }
 
