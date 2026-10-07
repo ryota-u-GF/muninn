@@ -17,10 +17,11 @@ class MemberDirectory
     public function visibleMemberIds(User $user): array
     {
         if ($user->isInternal()) {
-            return User::query()->pluck('id')->map(fn ($id) => (int) $id)->all();
+            return array_values(User::query()->pluck('id')->map(fn ($id) => (int) $id)->all());
         }
 
-        $taskIds = Access::scopeVisible(Task::query(), $user, 'tasks')->select('tasks.id');
+        $taskIds = Task::query()->select('tasks.id');
+        Access::scopeVisible($taskIds, $user, 'tasks');
         $ids = DB::table('task_assignees')->whereIn('task_id', $taskIds)->distinct()->pluck('user_id')
             ->map(fn ($id) => (int) $id)->all();
         $ids[] = $user->id;

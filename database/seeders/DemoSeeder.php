@@ -241,9 +241,6 @@ class DemoSeeder extends Seeder
             }
         }
 
-        Project::query()->whereKey($e->id)->first();
         $this->projects->update($president, $e->id, ['archived' => true], Project::query()->findOrFail($e->id)->revision);
-
-        $this->command?->info('デモデータを投入しました（利用者 7 / 案件 5 / タスク '.Task::query()->count().'）。');
     }
 }

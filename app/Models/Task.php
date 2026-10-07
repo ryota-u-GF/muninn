@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TaskStatus;
 use App\Enums\Visibility;
 use Carbon\CarbonImmutable;
+use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Task extends Model
 {
+    /** @use HasFactory<TaskFactory> */
     use HasFactory, SoftDeletes;
 
     protected $guarded = ['id', 'revision'];
@@ -68,7 +70,7 @@ class Task extends Model
     /** @return list<int> */
     public function assigneeIds(): array
     {
-        return $this->assignees->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        return array_values($this->assignees->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all());
     }
 
     /**

@@ -50,7 +50,11 @@ class HistoryQuery
         });
     }
 
-    /** この版（after）を閲覧できるか */
+    /**
+     * この版（after）を閲覧できるか
+     *
+     * @param  Builder<Revision>  $q
+     */
     private function stateVisible(Builder $q, User $user): void
     {
         if ($user->isInternal()) {
@@ -64,7 +68,11 @@ class HistoryQuery
         $q->where('revisions.visibility', Visibility::Shared->value)->whereIn('revisions.project_id', $ids === [] ? [0] : $ids);
     }
 
-    /** 対象を現在閲覧できるか（外注は削除済み不可） */
+    /**
+     * 対象を現在閲覧できるか（外注は削除済み不可）
+     *
+     * @param  Builder<Revision>  $q
+     */
     private function currentVisible(Builder $q, User $user, string $type, string $table): void
     {
         $q->where('revisions.entity_type', $type)->whereExists(function ($sub) use ($user, $table) {

@@ -95,6 +95,15 @@
             "@putenv DB_CONNECTION=mysql",
             "@putenv DB_DATABASE=testing",
             "@php artisan test"
+        ],
+        "test:e2e": [
+            "Composer\\Config::disableProcessTimeout",
+            "npm run build",
+            "npx playwright test"
+        ],
+        "test:concurrency": [
+            "@php artisan migrate:fresh --seed --force",
+            "@php tests/concurrency/parallel-writes.php"
         ]
     },
     "extra": {

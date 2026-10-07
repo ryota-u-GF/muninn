@@ -31,6 +31,7 @@ class ImportTest extends TestCase
     {
         $created = $this->importJson([['title' => '見積を送る', 'project_id' => $this->projectA->id, 'due_date' => '2026-10-20', 'source_type' => 'email']]);
         $this->assertSame('pending', $created[0]['status']);
+        $this->assertSame(1, $created[0]['revision']);
         $this->assertSame(0, Task::query()->count()); // 未確認のまま共有タスクは作られない
 
         $this->loginAs($this->employee2)->getJson('/api/imports')->assertOk()->assertJsonCount(0, 'data');

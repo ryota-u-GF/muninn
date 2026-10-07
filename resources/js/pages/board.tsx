@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { TaskCard } from '@/components/gf/task-card';
@@ -32,6 +32,8 @@ export default function Board() {
     const [projectFilter, setProjectFilter] = useState('');
     const [showAllDone, setShowAllDone] = useState(false);
     const [dragId, setDragId] = useState<number | null>(null);
+    // dragover は再描画前に届くことがあるため ref でも保持する
+    const dragRef = useRef<number | null>(null);
     const [dropTarget, setDropTarget] = useState<string | null>(null);
 
     useEffect(() => {
@@ -83,7 +85,8 @@ export default function Board() {
         beforeId: number | null,
     ) => {
         setDropTarget(null);
-        const task = tasks.find((t) => t.id === dragId);
+        const task = tasks.find((t) => t.id === dragRef.current);
+        dragRef.current = null;
         setDragId(null);
         if (!task || beforeId === task.id) {
             return;
@@ -251,7 +254,7 @@ export default function Board() {
                                             key={status}
                                             data-testid={`column-${key}`}
                                             onDragOver={(e) => {
-                                                if (dragId !== null) {
+                                                if (dragRef.current !== null) {
                                                     e.preventDefault();
                                                     setDropTarget(key);
                                                 }
@@ -307,9 +310,12 @@ export default function Board() {
                                                         );
                                                         e.dataTransfer.effectAllowed =
                                                             'move';
+                                                        dragRef.current =
+                                                            task.id;
                                                         setDragId(task.id);
                                                     }}
                                                     onDragEnd={() => {
+                                                        dragRef.current = null;
                                                         setDragId(null);
                                                         setDropTarget(null);
                                                     }}

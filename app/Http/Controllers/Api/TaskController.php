@@ -39,7 +39,8 @@ class TaskController extends Controller
         ]);
         $user = $request->user();
 
-        $query = Access::scopeVisible(Task::query(), $user, 'tasks')->with('assignees');
+        $query = Task::query()->with('assignees');
+        Access::scopeVisible($query, $user, 'tasks');
 
         if (! $request->boolean('include_archived')) {
             $query->where(fn ($q) => $q->whereNull('project_id')

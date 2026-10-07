@@ -22,6 +22,7 @@ class ImportJsonRequest extends FormRequest
         return ['json' => ['required', 'string', 'max:200000']];
     }
 
+    /** @return list<callable> */
     public function after(): array
     {
         return [function (Validator $validator) {

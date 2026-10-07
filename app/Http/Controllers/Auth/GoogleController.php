@@ -10,6 +10,7 @@ use App\Support\SessionLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirect;
 use Throwable;
 
@@ -26,7 +27,10 @@ class GoogleController extends Controller
         }
 
         // Socialite が state を検証する。scope は openid / email / profile のみ。
-        return Socialite::driver('google')->scopes(['openid', 'email', 'profile'])->redirect();
+        /** @var GoogleProvider $driver */
+        $driver = Socialite::driver('google');
+
+        return $driver->scopes(['openid', 'email', 'profile'])->redirect();
     }
 
     public function callback(Request $request): RedirectResponse

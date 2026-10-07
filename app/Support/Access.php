@@ -96,36 +96,37 @@ final class Access
 
     /**
      * タスク・文書テーブル共通の閲覧スコープ（visibility / project_id / created_by 列を持つもの）。
-     * Eloquent / Query Builder のどちらにも適用できる（履歴の whereExists でも使う）。
-     *
-     * @template TBuilder of Builder
-     *
-     * @param  TBuilder  $query
-     * @return TBuilder
+     * Eloquent / Query Builder のどちらにも適用できる（履歴の whereExists でも使う）。渡したクエリを直接絞り込む。
      */
-    public static function scopeVisible(Builder $query, User $user, string $table): Builder
+    public static function scopeVisible(Builder $query, User $user, string $table): void
     {
         if (! $user->is_active || $user->isTv()) {
-            return $query->whereRaw('1 = 0');
+            $query->whereRaw('1 = 0');
+
+            return;
         }
 
         if ($user->isInternal()) {
-            return $query->where(function ($q) use ($user, $table) {
+            $query->where(function ($q) use ($user, $table) {
                 $q->where("{$table}.visibility", Visibility::Shared->value)
                     ->orWhere(function ($q) use ($user, $table) {
                         $q->where("{$table}.visibility", Visibility::Private->value)
                             ->where("{$table}.created_by", $user->id);
                     });
             });
+
+            return;
         }
 
         $projectIds = self::contractorProjectIds($user);
 
         if ($projectIds === []) {
-            return $query->whereRaw('1 = 0');
+            $query->whereRaw('1 = 0');
+
+            return;
         }
 
-        return $query->where("{$table}.visibility", Visibility::Shared->value)
+        $query->where("{$table}.visibility", Visibility::Shared->value)
             ->whereIn("{$table}.project_id", $projectIds);
     }
 }

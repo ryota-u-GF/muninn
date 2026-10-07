@@ -32,8 +32,9 @@ class DocumentController extends Controller
             'date' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        $query = Access::scopeVisible(Document::query(), $request->user(), 'documents')
-            ->where(fn ($q) => $q->whereNull('project_id')->orWhereHas('project', fn ($p) => $p->whereNull('archived_at')));
+        $query = Document::query();
+        Access::scopeVisible($query, $request->user(), 'documents');
+        $query->where(fn ($q) => $q->whereNull('project_id')->orWhereHas('project', fn ($p) => $p->whereNull('archived_at')));
 
         if ($kind = $request->input('kind')) {
             $query->where('kind', $kind);

@@ -18,6 +18,7 @@ import {
     pageCount,
     pageSize,
     REFRESH_MS,
+    isTestActive,
     resolveScreen,
     sanitizeSettings,
     shiftFor,
@@ -209,10 +210,7 @@ export default function TvPage() {
 
     // テストの 5 分自動終了
     useEffect(() => {
-        if (
-            test &&
-            (now - test.startedAt >= TEST_AUTO_EXIT_MS || now < test.startedAt)
-        ) {
+        if (test && !isTestActive(test.startedAt, now)) {
             setTest(null);
         }
     }, [now, test]);
@@ -299,7 +297,9 @@ export default function TvPage() {
     };
 
     const startTest = (s: TestScreen) => {
-        setTest({ screen: s, startedAt: Date.now() });
+        const t = Date.now();
+        setNow(t);
+        setTest({ screen: s, startedAt: t });
         // 有効化済みの音だけテスト再生（本番の発火済みキーは変更しない）
         if (soundOn && audio.current && s !== 'rest' && s !== 'holiday') {
             playChime(audio.current);

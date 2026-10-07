@@ -275,6 +275,16 @@ export function nextRestState(state: RestState, nowMs: number): RestState {
     return state;
 }
 
+/**
+ * テストが有効か（5 分で自動終了）。表示用の時計は 1 秒ごとに更新されるため、
+ * 開始直後のわずかな遅れは許容し、大きな巻き戻り（1 分超）だけ終了扱いにする。
+ */
+export function isTestActive(startedAt: number, nowMs: number): boolean {
+    const elapsed = nowMs - startedAt;
+
+    return elapsed < TEST_AUTO_EXIT_MS && elapsed > -60_000;
+}
+
 /** 表示する画面の優先順位：テスト > 時刻画面 > 画面休憩 > 通常 */
 export function resolveScreen(
     test: { screen: TestScreen; startedAt: number } | null,

@@ -79,12 +79,14 @@ export default function Schedule() {
         });
     };
 
+    // 行が描画された後に今日の位置へスクロールする
+    const ready = !loading && ref.loaded && groups.length > 0;
     useEffect(() => {
-        if (!loading) {
-            scrollToToday();
+        if (ready) {
+            window.requestAnimationFrame(scrollToToday);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, zoom, mode]);
+    }, [ready, zoom, mode]);
 
     const dateCells = Array.from({ length: days }, (_, i) =>
         addDays(rangeStart, i),

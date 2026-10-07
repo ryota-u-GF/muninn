@@ -56,7 +56,7 @@ class ImportService
                     'warnings' => $warnings,
                     'status' => CandidateStatus::Pending,
                     'fingerprint' => $fingerprint,
-                ]);
+                ])->refresh();
             }
 
             return $created;
@@ -176,7 +176,7 @@ class ImportService
                 $batch->update(['result' => $result]);
 
                 return ['replayed' => false] + $result;
-            });
+            }, attempts: 3); // 同一キーの同時送信によるデッドロックは再試行（再試行時は保存済み結果を返す）
         } catch (UniqueConstraintViolationException) {
             // 同じキーの同時送信。先に確定した結果を返す。
             $existing = ImportBatch::query()->where('owner_id', $owner->id)->where('idempotency_key', $key)->first();
@@ -195,7 +195,10 @@ class ImportService
             throw ValidationException::withMessages(['idempotency_key' => '同じ確定キーで異なる内容が送信されました。']);
         }
 
-        return ['replayed' => true] + $batch->result;
+        /** @var array{task_ids: list<int>, candidate_ids: list<int>} $result */
+        $result = $batch->result;
+
+        return ['replayed' => true] + $result;
     }
 
     /** @param array<string, mixed> $payload */

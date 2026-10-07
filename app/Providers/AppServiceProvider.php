@@ -42,9 +42,13 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
-        RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()?->id ?? $request->ip())));
-        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()?->id ?? $request->ip())));
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()?->id ?? $request->ip())));
+        // ログイン：IP 単位で 30 回／分、アカウント（デモ）単位で 10 回／分
+        RateLimiter::for('login', fn (Request $request) => [
+            Limit::perMinute(30)->by('ip:'.$request->ip()),
+            Limit::perMinute(10)->by('acct:'.$request->ip().'|'.$request->integer('user_id')),
+        ]);
+        RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()->id ?? $request->ip())));
+        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()->id ?? $request->ip())));
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()->id ?? $request->ip())));
     }
 }
