@@ -33,7 +33,6 @@ export const TEST_AUTO_EXIT_MS = 5 * 60 * 1000;
 export const REFRESH_MS = 30_000;
 export const FETCH_TIMEOUT_MS = 15_000;
 export const PAGE_ROTATE_MS = 15_000;
-export const SHIFT_MS = 30_000;
 /** 通知：観測間隔がこれを超えたら（スリープ復帰など）古い境界では鳴らさない */
 export const MAX_OBSERVATION_GAP_MS = 90_000;
 /** 通知：境界からこれ以上経過していたら鳴らさない */
@@ -305,18 +304,4 @@ export function resolveScreen(
     }
 
     return { screen: rest.mode === 'rest' ? 'rest' : 'normal', testing: false };
-}
-
-/** 焼き付き対策として 30 秒ごとに表示位置を少しずらす */
-const SHIFTS: [number, number][] = [
-    [0, 0],
-    [14, 8],
-    [-12, 10],
-    [10, -12],
-    [-14, -8],
-    [6, 14],
-];
-
-export function shiftFor(nowMs: number): [number, number] {
-    return SHIFTS[Math.floor(nowMs / SHIFT_MS) % SHIFTS.length];
 }

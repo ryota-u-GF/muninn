@@ -1,5 +1,14 @@
-import { Head } from '@inertiajs/react';
-import { Bell, BellOff, Coffee, Moon, Settings, Sun, X } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import {
+    Bell,
+    BellOff,
+    Coffee,
+    Home,
+    Moon,
+    Settings,
+    Sun,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { api, ApiError } from '@/lib/api';
@@ -21,7 +30,6 @@ import {
     isTestActive,
     resolveScreen,
     sanitizeSettings,
-    shiftFor,
     TEST_AUTO_EXIT_MS,
     tokyoParts,
     validateSettings,
@@ -278,7 +286,6 @@ export default function TvPage() {
     const visible = tasks.slice(currentPage * size, currentPage * size + size);
 
     const { screen, testing } = resolveScreen(test, now, settings, rest);
-    const [dx, dy] = shiftFor(now);
     const userName = (id: number) =>
         data?.users.find((u) => u.id === id)?.name ?? '';
     const projectName = (id: number | null) =>
@@ -317,17 +324,10 @@ export default function TvPage() {
         >
             <Head title="TV表示" />
 
-            <div
-                className={cn(
-                    'absolute inset-0',
-                    !reducedMotion &&
-                        'transition-transform duration-[6000ms] ease-in-out',
-                )}
-                style={{ transform: `translate(${dx}px, ${dy}px)` }}
-            >
+            <div className="absolute inset-0">
                 {screen === 'normal' && (
-                    <div className="flex h-full flex-col bg-slate-50 p-6 text-slate-900">
-                        <header className="mb-4 flex items-end justify-between">
+                    <div className="flex h-full flex-col bg-slate-50 px-6 pt-6 pb-16 text-slate-900">
+                        <header className="mb-4 flex items-end justify-between pr-12">
                             <div className="flex items-center gap-3">
                                 <AppLogoIcon className="size-10 fill-current text-slate-800" />
                                 <div>
@@ -563,6 +563,16 @@ export default function TvPage() {
                 </div>
             )}
 
+            {/* 業務画面に戻るリンク（TV 表示は全画面でサイドバーが無いため） */}
+            <Link
+                href="/"
+                className="fixed right-3 bottom-3 z-50 flex items-center gap-1 rounded-full bg-black/30 px-3 py-2 text-sm text-white opacity-40 hover:opacity-100 focus:opacity-100"
+                data-testid="tv-back"
+            >
+                <Home className="size-4" />
+                業務画面に戻る
+            </Link>
+
             {/* 設定・テストパネル（非モーダル、右側。テストボタンは常に操作できる） */}
             <button
                 aria-label="設定とテスト"
@@ -576,7 +586,7 @@ export default function TvPage() {
             </button>
             {panelOpen && (
                 <aside
-                    className="fixed top-14 right-3 bottom-3 z-40 w-80 overflow-y-auto rounded-lg bg-white p-4 text-sm text-slate-900 shadow-2xl"
+                    className="fixed top-14 right-3 bottom-14 z-40 w-80 overflow-y-auto rounded-lg bg-white p-4 text-sm text-slate-900 shadow-2xl"
                     aria-label="TV設定とテスト"
                 >
                     <div className="mb-3 flex items-center justify-between">
