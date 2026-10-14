@@ -1,9 +1,14 @@
 import { usePage } from '@inertiajs/react';
-import { History, Trash2 } from 'lucide-react';
+import { ChevronDown, History, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -25,6 +30,7 @@ import type {
     Visibility,
 } from '@/lib/types';
 import { STATUS_LABELS } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 type Form = {
     title: string;
@@ -72,6 +78,29 @@ function toPayload(form: Form): Record<string, unknown> {
     };
 }
 
+/** 任意項目の目印 */
+function Optional() {
+    return (
+        <span className="ml-1 text-xs font-normal text-muted-foreground">
+            任意
+        </span>
+    );
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+    return <p className="text-xs text-muted-foreground">{children}</p>;
+}
+
+/** 詳細設定の中にある項目。エラーがあれば自動で開く */
+const DETAIL_KEYS = [
+    'description',
+    'status',
+    'start_date',
+    'visibility',
+    'source_type',
+    'source_url',
+];
+
 export function TaskDialog({
     open,
     task,
@@ -106,6 +135,7 @@ export function TaskDialog({
     const [conflict, setConflict] = useState<Task | 'unknown' | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [detailOpen, setDetailOpen] = useState(!isNew);
 
     useEffect(() => {
         if (open) {
@@ -116,6 +146,7 @@ export function TaskDialog({
             setErrors({});
             setMessage(null);
             setConflict(null);
+            setDetailOpen(!isNew);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, task?.id]);
@@ -257,6 +288,13 @@ export function TaskDialog({
         }
     };
 
+    const saveHint =
+        form.title.trim() === ''
+            ? 'タイトルを入力すると保存できます'
+            : !isNew && !dirty
+              ? '変更すると保存できます'
+              : null;
+
     const fieldError = (key: string) =>
         errors[key]?.[0] ? (
             <p className="text-xs text-red-600">{errors[key][0]}</p>
@@ -274,7 +312,7 @@ export function TaskDialog({
                     </DialogTitle>
                     <DialogDescription>
                         {isNew
-                            ? '必要な項目を入力して保存してください。'
+                            ? 'タイトルだけ入力すれば保存できます。担当者や期限などは後からでも変更できます。'
                             : canEdit
                               ? `版 ${base?.revision}。保存すると履歴に記録されます。`
                               : 'このタスクは閲覧のみです。'}
@@ -349,146 +387,27 @@ export function TaskDialog({
                     </div>
                 )}
 
-                <fieldset disabled={!canEdit || saving} className="grid gap-3">
+                <fieldset disabled={!canEdit || saving} className="grid gap-4">
                     <div className="grid gap-1">
-                        <Label htmlFor="task-title">タイトル（必須）</Label>
+                        <Label htmlFor="task-title">
+                            タイトル
+                            <span className="text-red-600">（必須）</span>
+                        </Label>
                         <Input
                             id="task-title"
                             value={form.title}
                             maxLength={300}
+                            placeholder="例：月次報告の作成"
                             onChange={(e) => set('title', e.target.value)}
                             autoFocus={isNew}
                         />
                         {fieldError('title')}
                     </div>
-                    <div className="grid gap-1">
-                        <Label htmlFor="task-description">説明</Label>
-                        <Textarea
-                            id="task-description"
-                            rows={4}
-                            value={form.description}
-                            maxLength={10000}
-                            onChange={(e) => set('description', e.target.value)}
-                        />
-                        {fieldError('description')}
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        <div className="grid gap-1">
-                            <Label htmlFor="task-status">状態</Label>
-                            <NativeSelect
-                                id="task-status"
-                                value={form.status}
-                                onChange={(e) =>
-                                    set('status', e.target.value as TaskStatus)
-                                }
-                            >
-                                {(['todo', 'doing', 'done'] as const).map(
-                                    (s) => (
-                                        <option key={s} value={s}>
-                                            {STATUS_LABELS[s]}
-                                        </option>
-                                    ),
-                                )}
-                            </NativeSelect>
-                        </div>
-                        <div className="grid gap-1">
-                            <Label htmlFor="task-start">開始日</Label>
-                            <Input
-                                id="task-start"
-                                type="date"
-                                value={form.start_date}
-                                onChange={(e) =>
-                                    set('start_date', e.target.value)
-                                }
-                            />
-                            {fieldError('start_date')}
-                        </div>
-                        <div className="grid gap-1">
-                            <Label htmlFor="task-due">期限</Label>
-                            <Input
-                                id="task-due"
-                                type="date"
-                                value={form.due_date}
-                                min={form.start_date || undefined}
-                                onChange={(e) =>
-                                    set('due_date', e.target.value)
-                                }
-                            />
-                            {fieldError('due_date')}
-                        </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="grid gap-1">
-                            <Label htmlFor="task-project">案件</Label>
-                            <NativeSelect
-                                id="task-project"
-                                value={form.project_id}
-                                disabled={!canChangeProject}
-                                onChange={(e) =>
-                                    set('project_id', e.target.value)
-                                }
-                            >
-                                {internal && (
-                                    <option value="">
-                                        会社共通（案件なし）
-                                    </option>
-                                )}
-                                {!internal && form.project_id === '' && (
-                                    <option value="">
-                                        案件を選択してください
-                                    </option>
-                                )}
-                                {projectOptions.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                            {fieldError('project_id')}
-                        </div>
-                        {internal && (
-                            <div className="grid gap-1">
-                                <Label htmlFor="task-visibility">
-                                    公開区分
-                                </Label>
-                                <NativeSelect
-                                    id="task-visibility"
-                                    value={form.visibility}
-                                    disabled={!canChangeVisibility}
-                                    onChange={(e) => {
-                                        const v = e.target.value as Visibility;
-                                        setForm((f) => ({
-                                            ...f,
-                                            visibility: v,
-                                            // 非公開の担当者は作成者本人のみ
-                                            assignee_ids:
-                                                v === 'private'
-                                                    ? f.assignee_ids.filter(
-                                                          (id) =>
-                                                              id ===
-                                                              (base?.created_by ??
-                                                                  me.id),
-                                                      )
-                                                    : f.assignee_ids,
-                                        }));
-                                    }}
-                                >
-                                    <option value="shared">共有</option>
-                                    <option value="private">
-                                        非公開（自分だけ）
-                                    </option>
-                                </NativeSelect>
-                                {!canChangeVisibility && !isNew && (
-                                    <p className="text-xs text-muted-foreground">
-                                        公開区分は作成者だけが変更できます。
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </div>
+
                     <div className="grid gap-1">
                         <span className="text-sm font-medium">
                             担当者（複数可）
+                            <Optional />
                         </span>
                         {canChangeAssignees ? (
                             <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-md border p-2">
@@ -538,45 +457,264 @@ export function TaskDialog({
                                 （外注は担当者を変更できません）
                             </p>
                         )}
+                        {canChangeAssignees && (
+                            <Hint>
+                                チェックした人のタスクになります。選ばない場合は「未割当」になります。
+                            </Hint>
+                        )}
                         {fieldError('assignee_ids')}
                     </div>
-                    {internal && (
-                        <div className="grid gap-3 sm:grid-cols-2">
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-1">
+                            <Label htmlFor="task-due">
+                                期限
+                                <Optional />
+                            </Label>
+                            <Input
+                                id="task-due"
+                                type="date"
+                                value={form.due_date}
+                                min={form.start_date || undefined}
+                                onChange={(e) =>
+                                    set('due_date', e.target.value)
+                                }
+                            />
+                            <Hint>
+                                終わらせたい日。過ぎると赤く表示されます。
+                            </Hint>
+                            {fieldError('due_date')}
+                        </div>
+                        <div className="grid gap-1">
+                            <Label htmlFor="task-project">
+                                案件
+                                {internal && <Optional />}
+                            </Label>
+                            <NativeSelect
+                                id="task-project"
+                                value={form.project_id}
+                                disabled={!canChangeProject}
+                                onChange={(e) =>
+                                    set('project_id', e.target.value)
+                                }
+                            >
+                                {internal && (
+                                    <option value="">
+                                        会社共通（案件なし）
+                                    </option>
+                                )}
+                                {!internal && form.project_id === '' && (
+                                    <option value="">
+                                        案件を選択してください
+                                    </option>
+                                )}
+                                {projectOptions.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                            <Hint>
+                                {internal
+                                    ? 'どの案件のタスクか。案件に関係ない作業は「会社共通」のままにします。'
+                                    : 'このタスクが属する案件を選びます。'}
+                            </Hint>
+                            {fieldError('project_id')}
+                        </div>
+                    </div>
+
+                    <Collapsible
+                        open={
+                            detailOpen ||
+                            DETAIL_KEYS.some((k) => errors[k]?.[0])
+                        }
+                        onOpenChange={setDetailOpen}
+                    >
+                        <CollapsibleTrigger
+                            type="button"
+                            className="flex w-full items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent"
+                        >
+                            <ChevronDown
+                                className={cn(
+                                    'size-4 transition-transform',
+                                    !(
+                                        detailOpen ||
+                                        DETAIL_KEYS.some((k) => errors[k]?.[0])
+                                    ) && '-rotate-90',
+                                )}
+                            />
+                            詳細設定
+                            <span className="text-xs font-normal text-muted-foreground">
+                                （説明・状態・開始日
+                                {internal ? '・公開区分・情報源' : ''}）
+                            </span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-3 grid gap-4">
                             <div className="grid gap-1">
-                                <Label htmlFor="task-source-type">
-                                    情報源の種類
+                                <Label htmlFor="task-description">
+                                    説明
+                                    <Optional />
                                 </Label>
-                                <NativeSelect
-                                    id="task-source-type"
-                                    value={form.source_type}
+                                <Textarea
+                                    id="task-description"
+                                    rows={4}
+                                    value={form.description}
+                                    maxLength={10000}
+                                    placeholder="作業内容や手順、注意点などを書きます"
                                     onChange={(e) =>
-                                        set('source_type', e.target.value)
-                                    }
-                                >
-                                    <option value="">なし</option>
-                                    <option value="email">メール</option>
-                                    <option value="minutes">議事録</option>
-                                    <option value="voice">音声メモ</option>
-                                    <option value="manual">手入力</option>
-                                    <option value="other">その他</option>
-                                </NativeSelect>
-                            </div>
-                            <div className="grid gap-1">
-                                <Label htmlFor="task-source-url">
-                                    情報源URL
-                                </Label>
-                                <Input
-                                    id="task-source-url"
-                                    type="url"
-                                    value={form.source_url}
-                                    onChange={(e) =>
-                                        set('source_url', e.target.value)
+                                        set('description', e.target.value)
                                     }
                                 />
-                                {fieldError('source_url')}
+                                {fieldError('description')}
                             </div>
-                        </div>
-                    )}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-1">
+                                    <Label htmlFor="task-status">状態</Label>
+                                    <NativeSelect
+                                        id="task-status"
+                                        value={form.status}
+                                        onChange={(e) =>
+                                            set(
+                                                'status',
+                                                e.target.value as TaskStatus,
+                                            )
+                                        }
+                                    >
+                                        {(
+                                            ['todo', 'doing', 'done'] as const
+                                        ).map((s) => (
+                                            <option key={s} value={s}>
+                                                {STATUS_LABELS[s]}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                    <Hint>
+                                        新しく作るときは「未着手」のままで構いません。
+                                    </Hint>
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="task-start">
+                                        開始日
+                                        <Optional />
+                                    </Label>
+                                    <Input
+                                        id="task-start"
+                                        type="date"
+                                        value={form.start_date}
+                                        onChange={(e) =>
+                                            set('start_date', e.target.value)
+                                        }
+                                    />
+                                    <Hint>
+                                        スケジュール画面の棒の開始位置になります。
+                                    </Hint>
+                                    {fieldError('start_date')}
+                                </div>
+                            </div>
+                            {internal && (
+                                <div className="grid gap-1">
+                                    <Label htmlFor="task-visibility">
+                                        公開区分
+                                    </Label>
+                                    <NativeSelect
+                                        id="task-visibility"
+                                        value={form.visibility}
+                                        disabled={!canChangeVisibility}
+                                        onChange={(e) => {
+                                            const v = e.target
+                                                .value as Visibility;
+                                            setForm((f) => ({
+                                                ...f,
+                                                // 非公開の担当者は作成者本人のみ
+                                                visibility: v,
+                                                assignee_ids:
+                                                    v === 'private'
+                                                        ? f.assignee_ids.filter(
+                                                              (id) =>
+                                                                  id ===
+                                                                  (base?.created_by ??
+                                                                      me.id),
+                                                          )
+                                                        : f.assignee_ids,
+                                            }));
+                                        }}
+                                    >
+                                        <option value="shared">共有</option>
+                                        <option value="private">
+                                            非公開（自分だけ）
+                                        </option>
+                                    </NativeSelect>
+                                    <Hint>
+                                        「共有」は他の人にも見えます。「非公開」は自分だけに表示されます。
+                                    </Hint>
+                                    {!canChangeVisibility && !isNew && (
+                                        <Hint>
+                                            公開区分は作成者だけが変更できます。
+                                        </Hint>
+                                    )}
+                                </div>
+                            )}
+                            {internal && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-1">
+                                        <Label htmlFor="task-source-type">
+                                            情報源の種類
+                                            <Optional />
+                                        </Label>
+                                        <NativeSelect
+                                            id="task-source-type"
+                                            value={form.source_type}
+                                            onChange={(e) =>
+                                                set(
+                                                    'source_type',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">なし</option>
+                                            <option value="email">
+                                                メール
+                                            </option>
+                                            <option value="minutes">
+                                                議事録
+                                            </option>
+                                            <option value="voice">
+                                                音声メモ
+                                            </option>
+                                            <option value="manual">
+                                                手入力
+                                            </option>
+                                            <option value="other">
+                                                その他
+                                            </option>
+                                        </NativeSelect>
+                                        <Hint>
+                                            このタスクの元になった情報（任意）。
+                                        </Hint>
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label htmlFor="task-source-url">
+                                            情報源URL
+                                            <Optional />
+                                        </Label>
+                                        <Input
+                                            id="task-source-url"
+                                            type="url"
+                                            value={form.source_url}
+                                            placeholder="https://…"
+                                            onChange={(e) =>
+                                                set(
+                                                    'source_url',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        {fieldError('source_url')}
+                                    </div>
+                                </div>
+                            )}
+                        </CollapsibleContent>
+                    </Collapsible>
                 </fieldset>
 
                 <DialogFooter className="flex-wrap gap-2 sm:justify-between">
@@ -615,6 +753,14 @@ export function TaskDialog({
                         >
                             {canEdit ? 'キャンセル' : '閉じる'}
                         </Button>
+                        {canEdit && saveHint && (
+                            <span
+                                className="self-center text-xs text-muted-foreground"
+                                data-testid="task-save-hint"
+                            >
+                                {saveHint}
+                            </span>
+                        )}
                         {canEdit && (
                             <Button
                                 type="button"
