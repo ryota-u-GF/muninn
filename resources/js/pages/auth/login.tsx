@@ -20,7 +20,7 @@ export default function Login({
 
     return (
         <AuthLayout
-            title="GF業務アプリ"
+            title="業務アプリ"
             description="会社の Google アカウントでログインしてください"
         >
             <Head title="ログイン" />
