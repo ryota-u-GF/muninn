@@ -198,10 +198,26 @@
     animation: gf-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
+/* ログイン画面のロゴ：ゆっくり上下に漂う */
+@keyframes gf-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.gf-float {
+    animation: gf-float 4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .gf-page-enter,
     .gf-rise,
-    .gf-pop {
+    .gf-pop,
+    .gf-float {
         animation: none;
     }
 }
