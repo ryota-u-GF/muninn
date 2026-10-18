@@ -6,12 +6,17 @@ use App\Actions\Imports\ImportService;
 use App\Enums\CandidateStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmImportRequest;
+use App\Http\Requests\ExtractImportRequest;
 use App\Http\Requests\ImportJsonRequest;
 use App\Http\Requests\UpdateCandidateRequest;
 use App\Http\Resources\CandidateResource;
 use App\Models\ImportCandidate;
+use App\Services\Ai\AiNotConfiguredException;
+use App\Services\Ai\AiRequestFailedException;
+use App\Services\Ai\TaskExtractor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /** メール（旧AI候補）の候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
 class ImportController extends Controller
@@ -38,6 +43,20 @@ class ImportController extends Controller
 
         return CandidateResource::collection($this->imports->createCandidates($request->user(), 'manual_json', $items))
             ->response()->setStatusCode(201);
+    }
+
+    /** 貼り付けた文章から、本人の AI で候補を作る（文章は保存しない）。 */
+    public function extract(ExtractImportRequest $request, TaskExtractor $extractor): JsonResponse
+    {
+        try {
+            $items = $extractor->extract($request->user(), (string) $request->validated('text'));
+        } catch (AiNotConfiguredException|AiRequestFailedException $e) {
+            throw ValidationException::withMessages(['ai' => $e->getMessage()]);
+        }
+
+        $candidates = $items === [] ? [] : $this->imports->createCandidates($request->user(), 'ai_text', $items);
+
+        return CandidateResource::collection($candidates)->response()->setStatusCode(201);
     }
 
     public function update(UpdateCandidateRequest $request, int $candidate): CandidateResource

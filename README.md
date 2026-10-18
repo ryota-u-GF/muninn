@@ -169,6 +169,8 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 | `GET /users` / `POST /users` / `PATCH /users/{id}` `{role?, is_active?, name?, expected_revision}`                                                      | 利用者管理（管理者）                                                                                                          |
 | `GET /imports`                                                                                                                                          | 本人の候補（未確認＋直近 14 日の処理済み）                                                                                    |
 | `POST /imports` `{json}`                                                                                                                                | 手動 JSON（候補の配列、または `{"candidates":[…]}`）                                                                          |
+| `POST /imports/extract` `{text}`                                                                                                                        | 貼り付けた文章から本人の AI で候補を作成（キー未設定は 422、1 分 10 回まで）                                                  |
+| `GET/PUT/DELETE /ai-settings`、`POST /ai-settings/test`                                                                                                 | 本人の AI 設定（API キー・モデル）。キーは返さない                                                                            |
 | `PATCH /imports/{id}` / `POST /imports/{id}/reject`                                                                                                     | 候補の編集・却下（却下で本文削除）                                                                                            |
 | `POST /imports/confirm` `{idempotency_key, items:[{id, expected_revision}]}`                                                                            | 選択分を原子的にタスク化（公開区分は候補ごとに共有／自分のみ）。同じキーの再送は保存済みの結果（`replayed: true`）            |
 | `GET /tv`                                                                                                                                               | TV 用。`generated_at, today, users[id,name], projects[id,name], tasks[id,title,status,project_id,due_date,assignee_ids]` のみ |
@@ -234,7 +236,8 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 ## 11. 既知の制限
 
 - Google ログイン・Google カレンダー（予定詳細／free-busy）・MCP・LLM は**未接続**（カレンダー・MCP は初版未実装、後続工程）。未接続を「空き」と扱う画面はない。
-- メールの候補の入力は手動 JSON のみ（Gmail の自動取得・AI による抽出は未実装）。Drive・録音・自動解析は対象外。
+- メールの候補は、貼り付けた文章を本人の Claude（API キーは利用者ごとに登録）で抽出するか、手動 JSON で作る。Gmail の自動取得は未実装。Drive・録音・自動解析は対象外。
+- AI の API キーは `user_ai_settings` に暗号化して保存し、画面・API には返さない（末尾4文字のみ表示）。文章は保存せず、Anthropic に送信される。AI の出力は候補にするだけで、本人が承認するまでタスクにならない。
 - API トークンは発行していない（MCP 用トークンは後続工程で設計。外注・TV には発行しない方針）。
 - 文書はプレーンテキストのみ（リッチブロック・共同カーソル・コメントは対象外）。PDF・Word の取込は対象外。
 - スケジュールの日付ドラッグ変更は未実装（初版必須ではない）。

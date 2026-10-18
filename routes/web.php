@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AiSettingController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\ImportController;
@@ -74,9 +75,17 @@ Route::middleware('auth')->group(function () {
         Route::middleware('can:use-imports')->group(function () {
             Route::get('imports', [ImportController::class, 'index']);
             Route::post('imports', [ImportController::class, 'store'])->middleware('throttle:imports');
+            Route::post('imports/extract', [ImportController::class, 'extract'])->middleware('throttle:ai');
             Route::post('imports/confirm', [ImportController::class, 'confirm'])->middleware('throttle:imports');
             Route::patch('imports/{candidate}', [ImportController::class, 'update'])->whereNumber('candidate');
             Route::post('imports/{candidate}/reject', [ImportController::class, 'reject'])->whereNumber('candidate');
+        });
+
+        Route::middleware('can:use-imports')->prefix('ai-settings')->group(function () {
+            Route::get('/', [AiSettingController::class, 'show']);
+            Route::put('/', [AiSettingController::class, 'update'])->middleware('throttle:ai');
+            Route::delete('/', [AiSettingController::class, 'destroy']);
+            Route::post('test', [AiSettingController::class, 'test'])->middleware('throttle:ai');
         });
 
         Route::middleware('can:admin')->group(function () {

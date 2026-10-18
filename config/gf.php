@@ -25,6 +25,19 @@ return [
         'import_items' => 100,
     ],
 
+    // AI（Claude）連携。API キーは利用者ごとに登録する。
+    'ai' => [
+        'default_model' => 'claude-haiku-5-5',
+        // 画面で選べるモデル（id => 表示名）
+        'models' => [
+            'claude-haiku-5-5' => 'Haiku 5.5（軽い・低コスト／既定）',
+            'claude-sonnet-5-5' => 'Sonnet 5.5（標準）',
+            'claude-opus-5-5' => 'Opus 5.5（高精度・高コスト）',
+        ],
+        // 1 回に AI へ送る文章の最大文字数
+        'max_text_chars' => 20000,
+    ],
+
     'history' => [
         'global_limit' => 500,
         'entity_limit' => 200,

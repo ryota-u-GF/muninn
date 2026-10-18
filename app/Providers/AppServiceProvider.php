@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Ai\AnthropicTaskExtractor;
+use App\Services\Ai\TaskExtractor;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -16,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(TaskExtractor::class, AnthropicTaskExtractor::class);
     }
 
     public function boot(): void
@@ -48,6 +50,8 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('acct:'.$request->ip().'|'.$request->integer('user_id')),
         ]);
         RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()->id ?? $request->ip())));
+        // AI の呼び出し（費用がかかるため、利用者ごとに 1 分 10 回まで）
+        RateLimiter::for('ai', fn (Request $request) => Limit::perMinute(10)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()->id ?? $request->ip())));
     }

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { CheckSquare, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { AiSettings } from '@/components/gf/ai-settings';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ const EXAMPLE_JSON = `[
 
 const SOURCE_LABELS: Record<string, string> = {
     manual_json: '手動追加',
+    ai_text: '文章から作成',
     gmail: 'Gmail',
 };
 
@@ -43,6 +45,8 @@ export default function Imports() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [json, setJson] = useState('');
+    const [text, setText] = useState('');
+    const [aiReady, setAiReady] = useState(false);
     const [busy, setBusy] = useState(false);
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -52,7 +56,9 @@ export default function Imports() {
         payload: CandidatePayload;
     } | null>(null);
 
-    useUnsavedGuard(json.trim() !== '' || editing !== null);
+    useUnsavedGuard(
+        json.trim() !== '' || text.trim() !== '' || editing !== null,
+    );
 
     const load = useCallback(async () => {
         try {
@@ -160,6 +166,49 @@ export default function Imports() {
                     <li>メールの自動取得は準備中です（未接続）。</li>
                 </ul>
             </div>
+
+            <section className="space-y-2 rounded-md border p-3">
+                <h2 className="font-semibold">メールの文章から候補を作る</h2>
+                <Textarea
+                    aria-label="メールの文章"
+                    rows={8}
+                    value={text}
+                    maxLength={20000}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="メールの本文を貼り付けてください"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        size="sm"
+                        disabled={busy || text.trim() === '' || !aiReady}
+                        onClick={() =>
+                            run(async () => {
+                                const res = await api<{ data: Candidate[] }>(
+                                    'POST',
+                                    '/api/imports/extract',
+                                    { text },
+                                );
+                                setText('');
+                                toast.success(
+                                    res.data.length === 0
+                                        ? 'タスクになりそうなものは見つかりませんでした'
+                                        : `${res.data.length}件の候補を作成しました（まだタスクにはなっていません）`,
+                                );
+                                await load();
+                            })
+                        }
+                    >
+                        {busy ? '作成中…' : '候補を作る'}
+                    </Button>
+                    {!aiReady && (
+                        <span className="text-xs text-muted-foreground">
+                            先に下の「AIの設定」でAPIキーを登録してください
+                        </span>
+                    )}
+                </div>
+            </section>
+
+            <AiSettings onConfiguredChange={setAiReady} />
 
             <details className="rounded-md border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">
