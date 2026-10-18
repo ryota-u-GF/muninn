@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AiSetting;
 use App\Models\GmailConnection;
 use App\Models\ImportCandidate;
 use App\Models\MailMessage;
@@ -75,6 +76,11 @@ class GmailTest extends TestCase
         ]);
     }
 
+    private function withAiKey(User $user): void
+    {
+        AiSetting::query()->create(['user_id' => $user->id, 'api_key' => 'sk-ant-test-0123456789abcdefghij', 'model' => 'claude-haiku-5-5']);
+    }
+
     private function fakeExtractor(?string $rejectSubjectContaining = null): void
     {
         $this->app->bind(TaskExtractor::class, fn () => new class($rejectSubjectContaining) implements TaskExtractor
@@ -116,19 +122,21 @@ class GmailTest extends TestCase
         $this->connect($this->employee, ['last_synced_at' => now()]);
         $this->loginAs($this->employee);
 
-        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => 'タスク', 'exclude_promotions' => false, 'initial_days' => 7, 'auto_sync' => false])
+        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => 'タスク', 'exclude_promotions' => false, 'initial_days' => 7, 'auto_sync' => false, 'sync_interval_minutes' => 30])
             ->assertOk()->assertJsonPath('data.scope_mode', 'label')->assertJsonPath('data.label_name', 'タスク')
-            ->assertJsonPath('data.initial_days', 7)->assertJsonPath('data.auto_sync', false)->assertJsonPath('data.last_synced_at', null);
+            ->assertJsonPath('data.initial_days', 7)->assertJsonPath('data.auto_sync', false)->assertJsonPath('data.sync_interval_minutes', 30)->assertJsonPath('data.last_synced_at', null);
 
-        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => '', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])
+        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => '', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true, 'sync_interval_minutes' => 10])
             ->assertJsonValidationErrors('label_name');
-        $this->putJson('/api/gmail', ['scope_mode' => 'all', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])
+        $this->putJson('/api/gmail', ['scope_mode' => 'all', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true, 'sync_interval_minutes' => 10])
             ->assertJsonValidationErrors('scope_mode');
-        $this->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 365, 'auto_sync' => true])
+        $this->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 365, 'auto_sync' => true, 'sync_interval_minutes' => 10])
             ->assertJsonValidationErrors('initial_days');
+        $this->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true, 'sync_interval_minutes' => 1])
+            ->assertJsonValidationErrors('sync_interval_minutes'); // 短すぎる間隔は選べない
 
         $this->loginAs($this->employee2)
-            ->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])->assertNotFound();
+            ->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true, 'sync_interval_minutes' => 10])->assertNotFound();
     }
 
     public function test_contractors_and_guests_cannot_use_gmail(): void
@@ -227,7 +235,7 @@ class GmailTest extends TestCase
 
     public function test_auto_sync_does_nothing_when_turned_off(): void
     {
-        $this->connect($this->employee, ['auto_sync' => false]);
+        $this->connect($this->employee, ['auto_sync' => false, 'sync_interval_minutes' => 30]);
         $this->fakeGoogle(['m1']);
         $this->fakeExtractor();
 
@@ -240,6 +248,7 @@ class GmailTest extends TestCase
     public function test_auto_sync_skips_when_the_last_sync_was_recent_but_manual_sync_does_not(): void
     {
         $this->connect($this->employee, ['last_synced_at' => now()->subMinutes(5)]);
+        $this->withAiKey($this->employee);
         $this->fakeGoogle(['m1']);
         $this->fakeExtractor();
         $this->loginAs($this->employee);
@@ -254,6 +263,7 @@ class GmailTest extends TestCase
     public function test_auto_sync_runs_when_enough_time_has_passed(): void
     {
         $this->connect($this->employee, ['last_synced_at' => now()->subMinutes(30)]);
+        $this->withAiKey($this->employee);
         $this->fakeGoogle(['m1', 'm2']);
         $this->fakeExtractor();
 
@@ -292,6 +302,61 @@ class GmailTest extends TestCase
         $this->loginAs($this->employee)->postJson('/api/gmail/sync')->assertUnprocessable();
         $this->fakeExtractor();
         $this->postJson('/api/gmail/sync')->assertOk()->assertJsonPath('data.status', 'done');
+    }
+
+    public function test_auto_sync_follows_the_interval_setting(): void
+    {
+        $this->withAiKey($this->employee);
+        $this->fakeExtractor();
+
+        // 5 分間隔：6 分前なら実行、3 分前なら実行しない
+        $this->connect($this->employee, ['sync_interval_minutes' => 5, 'last_synced_at' => now()->subMinutes(6)]);
+        $this->fakeGoogle(['m1']);
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync', ['auto' => true])->assertJsonPath('data.status', 'done');
+
+        GmailConnection::query()->update(['last_synced_at' => now()->subMinutes(3)]);
+        $this->postJson('/api/gmail/sync', ['auto' => true])->assertJsonPath('data.status', 'recent');
+
+        // 30 分間隔：20 分前でもまだ実行しない
+        GmailConnection::query()->update(['sync_interval_minutes' => 30, 'last_synced_at' => now()->subMinutes(20)]);
+        $this->postJson('/api/gmail/sync', ['auto' => true])->assertJsonPath('data.status', 'recent');
+    }
+
+    public function test_auto_sync_does_nothing_without_an_ai_key(): void
+    {
+        $this->connect($this->employee, ['last_synced_at' => now()->subHour()]);
+        $this->fakeGoogle(['m1']);
+
+        // 手動なら案内（422）を出すが、自動は黙って何もしない
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync', ['auto' => true])
+            ->assertOk()->assertJsonPath('data.status', 'disabled');
+        Http::assertNothingSent();
+    }
+
+    public function test_auto_sync_waits_for_the_next_interval_after_a_failure(): void
+    {
+        $this->connect($this->employee, ['last_synced_at' => now()->subHour()]);
+        $this->withAiKey($this->employee);
+        $this->fakeGoogle(['m1'], 400); // 連携が失効している
+        $this->loginAs($this->employee);
+
+        // 1 回目は失敗して記録される
+        $this->postJson('/api/gmail/sync', ['auto' => true])->assertUnprocessable();
+        $this->assertNotNull(GmailConnection::query()->firstOrFail()->last_error);
+
+        // 毎分の確認では、同じ失敗を繰り返さない（Google を呼ばない）
+        Http::fake();
+        $this->postJson('/api/gmail/sync', ['auto' => true])->assertOk()->assertJsonPath('data.status', 'recent');
+        Http::assertNothingSent();
+    }
+
+    public function test_ai_failures_are_recorded_for_the_panel(): void
+    {
+        $this->connect($this->employee);
+        $this->fakeGoogle(['m1']); // AI キーなし
+
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync')->assertUnprocessable();
+        $this->assertStringContainsString('AI', (string) GmailConnection::query()->firstOrFail()->last_error);
     }
 
     public function test_sync_requires_a_connection(): void

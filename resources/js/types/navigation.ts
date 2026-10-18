@@ -11,4 +11,6 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** サイドバーの項目に出す件数（0 のときは出さない） */
+    badge?: number;
 };

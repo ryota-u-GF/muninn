@@ -46,8 +46,9 @@ return [
         // 1 回に確認するメールの最大数（新しい順）
         'list_size' => 100,
         'initial_days_options' => [3, 7, 30],
-        // アプリを開いたときの自動取得は、前回の取得からこの分数が過ぎているときだけ行う（AI の費用を抑える）
-        'auto_sync_min_minutes' => 15,
+        // アプリを開いている間の自動取得の間隔（分）。画面で選べる値と、既定値。
+        'sync_interval_options' => [5, 10, 30],
+        'default_sync_interval' => 10,
     ],
 
     'history' => [

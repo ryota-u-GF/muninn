@@ -10,6 +10,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
+    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
     useSidebar,
@@ -85,6 +86,14 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                                         <span>{item.title}</span>
                                     </Link>
                                 </SidebarMenuButton>
+                                {item.badge ? (
+                                    <SidebarMenuBadge
+                                        aria-label={`${item.title}の未確認 ${item.badge}件`}
+                                        data-testid="nav-badge"
+                                    >
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </SidebarMenuBadge>
+                                ) : null}
                             </SidebarMenuItem>
                         ))}
                     </SidebarMenu>

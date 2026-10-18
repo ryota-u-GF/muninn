@@ -57,7 +57,8 @@ class GmailSyncer
                 $candidates === null ? $result['skipped']++ : $result['processed']++;
                 $result['candidates'] += $candidates ?? 0;
             }
-        } catch (GmailException $e) {
+        } catch (GmailException|AiNotConfiguredException|AiRequestFailedException $e) {
+            // 失敗は画面に残し、自動取得が同じ失敗を繰り返さないための目印にもする
             $connection->update(['last_error' => $e->getMessage()]);
             throw $e;
         }

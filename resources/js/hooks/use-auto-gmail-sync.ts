@@ -3,8 +3,10 @@ import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 
-/** 取得が終わったことを、メール画面などに知らせる（候補や最終取得日時を更新するため） */
+/** 取得が終わったことを、メール画面・サイドバーに知らせる（候補・件数・最終取得日時を更新するため） */
 export const MAIL_SYNCED_EVENT = 'gf:mail-synced';
+/** 未確認の候補の件数が変わったことを知らせる（detail: 件数） */
+export const PENDING_COUNT_EVENT = 'gf:pending-count';
 
 type SyncResponse = {
     data: {
@@ -14,31 +16,25 @@ type SyncResponse = {
     };
 };
 
-// このブラウザの画面を開いている間は、1 回だけ確認する（再読み込みしたときは、もう一度確認する）
-let started = false;
+/** 画面から、サーバーへ「取得してよいか」を確認する間隔。実際に取得する間隔は、設定（5・10・30分）に従う。 */
+const HEARTBEAT_MS = 60_000;
 
-async function run() {
+let lastRun = 0;
+let running = false;
+let lastToast = '';
+
+async function tick(force = false) {
+    if (document.visibilityState !== 'visible' || running) {
+        return;
+    }
+    // 画面の切り替えで何度も呼ばれても、確認は 1 分に 1 回までにする
+    if (!force && Date.now() - lastRun < HEARTBEAT_MS - 5_000) {
+        return;
+    }
+    running = true;
+    lastRun = Date.now();
+
     try {
-        const [gmail, ai] = await Promise.all([
-            api<{
-                data: {
-                    connected: boolean;
-                    oauth_ready: boolean;
-                    auto_sync: boolean;
-                };
-            }>('GET', '/api/gmail'),
-            api<{ data: { configured: boolean } }>('GET', '/api/ai-settings'),
-        ]);
-        // 連携していない・自動取得がオフ・AI のキーが未設定のときは、何もしない（案内も出さない）
-        if (
-            !gmail.data.connected ||
-            !gmail.data.oauth_ready ||
-            !gmail.data.auto_sync ||
-            !ai.data.configured
-        ) {
-            return;
-        }
-
         let created = 0;
         let ran = false;
         // 1 回に少数ずつ処理するので、残りがなくなるまで続けて呼ぶ
@@ -55,6 +51,7 @@ async function run() {
                 break;
             }
         }
+        lastToast = '';
 
         if (ran) {
             window.dispatchEvent(new Event(MAIL_SYNCED_EVENT));
@@ -68,25 +65,41 @@ async function run() {
             });
         }
     } catch (e) {
-        // 自動取得の失敗で作業を止めない。原因は「メール」画面に表示される。
-        if (e instanceof ApiError) {
-            toast.error(`メールの自動取得に失敗しました：${e.firstError()}`);
+        // 自動取得の失敗で作業を止めない。同じ内容の通知は繰り返さない。原因は「メール」画面にも表示される。
+        const ignored = [401, 403, 419];
+        if (e instanceof ApiError && !ignored.includes(e.status)) {
+            const message = `メールの自動取得に失敗しました：${e.firstError()}`;
+            if (message !== lastToast) {
+                lastToast = message;
+                toast.error(message);
+            }
         }
+    } finally {
+        running = false;
     }
 }
 
 /**
- * アプリを開いたときに、社内メンバーの Gmail から新着メールを取り込み、候補にする。
+ * アプリを開いている間、社内メンバーの Gmail から新着メールを定期的に取り込み、候補にする。
+ * 開いたとき・タブに戻ったとき・1 分ごとに確認し、設定した間隔（既定 10 分）が過ぎていれば取得する。
  * 連携・AI のキー・自動取得の設定が揃っているときだけ動く。承認するまでタスクにはならない。
  */
 export function useAutoGmailSync() {
     const role = usePage().props.auth.user?.role;
 
     useEffect(() => {
-        if (started || (role !== 'admin' && role !== 'employee')) {
+        if (role !== 'admin' && role !== 'employee') {
             return;
         }
-        started = true;
-        void run();
+
+        void tick();
+        const timer = window.setInterval(() => void tick(true), HEARTBEAT_MS);
+        const onVisible = () => void tick();
+        document.addEventListener('visibilitychange', onVisible);
+
+        return () => {
+            window.clearInterval(timer);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, [role]);
 }

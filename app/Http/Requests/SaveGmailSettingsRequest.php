@@ -21,12 +21,13 @@ class SaveGmailSettingsRequest extends FormRequest
             'exclude_promotions' => ['required', 'boolean'],
             'initial_days' => ['required', 'integer', Rule::in(config('gf.gmail.initial_days_options'))],
             'auto_sync' => ['required', 'boolean'],
+            'sync_interval_minutes' => ['required', 'integer', Rule::in(config('gf.gmail.sync_interval_options'))],
         ];
     }
 
     /** @return array<string, string> */
     public function attributes(): array
     {
-        return ['scope_mode' => '取り込み対象', 'label_name' => 'ラベル名', 'initial_days' => '初回の取得期間'];
+        return ['scope_mode' => '取り込み対象', 'label_name' => 'ラベル名', 'initial_days' => '初回の取得期間', 'sync_interval_minutes' => '取得の間隔'];
     }
 }

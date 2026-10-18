@@ -36,6 +36,17 @@ class ImportController extends Controller
         ]);
     }
 
+    /** サイドバーに出す、未確認の候補の件数（本人分のみ）。 */
+    public function pendingCount(Request $request): JsonResponse
+    {
+        return response()->json(['data' => [
+            'count' => ImportCandidate::query()
+                ->where('owner_id', $request->user()->id)
+                ->where('status', CandidateStatus::Pending->value)
+                ->count(),
+        ]]);
+    }
+
     public function store(ImportJsonRequest $request): JsonResponse
     {
         /** @var list<array<string, mixed>> $items */

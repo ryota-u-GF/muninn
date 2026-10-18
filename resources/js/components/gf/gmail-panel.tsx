@@ -17,7 +17,8 @@ type GmailData = {
     initial_days: number;
     initial_days_options: number[];
     auto_sync: boolean;
-    auto_sync_min_minutes: number;
+    sync_interval_minutes: number;
+    sync_interval_options: number[];
     last_synced_at: string | null;
     last_error: string | null;
 };
@@ -56,6 +57,7 @@ export function GmailPanel({
     const [exclude, setExclude] = useState(true);
     const [days, setDays] = useState(3);
     const [autoSync, setAutoSync] = useState(true);
+    const [interval, setIntervalMinutes] = useState(10);
     const [busy, setBusy] = useState(false);
 
     const apply = useCallback((next: GmailData) => {
@@ -65,6 +67,7 @@ export function GmailPanel({
         setExclude(next.exclude_promotions);
         setDays(next.initial_days);
         setAutoSync(next.auto_sync);
+        setIntervalMinutes(next.sync_interval_minutes);
     }, []);
 
     useEffect(() => {
@@ -234,12 +237,30 @@ export function GmailPanel({
                                 checked={autoSync}
                                 onChange={(e) => setAutoSync(e.target.checked)}
                             />
-                            アプリを開いたときに、自動で取得する
-                            <span className="text-xs text-muted-foreground">
-                                （前回から{data.auto_sync_min_minutes}
-                                分以上あいているとき）
-                            </span>
+                            アプリを開いている間、自動で取得する
                         </label>
+                        {autoSync && (
+                            <div className="grid gap-1">
+                                <Label htmlFor="gmail-interval">
+                                    取得の間隔
+                                </Label>
+                                <NativeSelect
+                                    id="gmail-interval"
+                                    value={interval}
+                                    onChange={(e) =>
+                                        setIntervalMinutes(
+                                            Number(e.target.value),
+                                        )
+                                    }
+                                >
+                                    {data.sync_interval_options.map((m) => (
+                                        <option key={m} value={m}>
+                                            {m}分ごと
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Button
@@ -261,6 +282,7 @@ export function GmailPanel({
                                             exclude_promotions: exclude,
                                             initial_days: days,
                                             auto_sync: autoSync,
+                                            sync_interval_minutes: interval,
                                         },
                                     );
                                     apply(res.data);

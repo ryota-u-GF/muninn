@@ -15,6 +15,7 @@ import {
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { usePendingMailCount } from '@/hooks/use-pending-mail-count';
 import {
     Sidebar,
     SidebarContent,
@@ -30,6 +31,7 @@ export function AppSidebar() {
     const { auth } = usePage().props;
     const role = auth.user?.role;
     const internal = role === 'admin' || role === 'employee';
+    const pendingMail = usePendingMailCount(internal);
 
     const tasks: NavItem[] = [
         { title: 'タスクボード', href: '/', icon: KanbanSquare },
@@ -49,6 +51,7 @@ export function AppSidebar() {
             title: 'メール',
             href: '/imports',
             icon: Sparkles,
+            badge: pendingMail,
         });
         manage.push({ title: 'TV表示', href: '/tv', icon: Tv });
     }

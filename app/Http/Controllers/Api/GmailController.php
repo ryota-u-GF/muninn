@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Auth\GmailController as GmailOAuth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveGmailSettingsRequest;
+use App\Models\AiSetting;
 use App\Models\GmailConnection;
 use App\Services\Ai\AiNotConfiguredException;
 use App\Services\Ai\AiRequestFailedException;
@@ -36,6 +37,7 @@ class GmailController extends Controller
             'exclude_promotions' => $request->boolean('exclude_promotions'),
             'initial_days' => (int) $request->validated('initial_days'),
             'auto_sync' => $request->boolean('auto_sync'),
+            'sync_interval_minutes' => (int) $request->validated('sync_interval_minutes'),
             // 対象を変えたら、初回と同じ範囲から取り込み直す（取り込み済みのメールは二重にならない）
             'last_synced_at' => null,
         ]);
@@ -65,11 +67,18 @@ class GmailController extends Controller
 
         if ($request->boolean('auto')) {
             $connection = GmailConnection::query()->where('user_id', $user->id)->first();
-            if ($connection === null || ! $connection->auto_sync) {
+            // 連携していない・自動取得がオフ・AI のキーが未設定のときは、何もしない
+            if ($connection === null || ! $connection->auto_sync || ! AiSetting::query()->where('user_id', $user->id)->exists()) {
                 return response()->json(['data' => $idle + ['status' => 'disabled']]);
             }
-            $minutes = (int) config('gf.gmail.auto_sync_min_minutes');
-            if ($connection->last_synced_at !== null && $connection->last_synced_at->greaterThan(CarbonImmutable::now()->subMinutes($minutes))) {
+            // 設定した間隔が過ぎるまでは取らない（画面から 1 分ごとに確認が来ても、Google・AI は呼ばない）。
+            // 少し早めに届いた確認でも動けるよう、30 秒の余裕を見る。
+            $threshold = CarbonImmutable::now()->subSeconds($connection->sync_interval_minutes * 60 - 30);
+            if ($connection->last_synced_at !== null && $connection->last_synced_at->greaterThan($threshold)) {
+                return response()->json(['data' => $idle + ['status' => 'recent']]);
+            }
+            // 直前に失敗していたら、次の間隔まで待つ（同じ失敗を毎分繰り返さない）
+            if ($connection->last_error !== null && $connection->updated_at?->greaterThan($threshold)) {
                 return response()->json(['data' => $idle + ['status' => 'recent']]);
             }
         }
@@ -105,7 +114,8 @@ class GmailController extends Controller
             'exclude_promotions' => $connection->exclude_promotions ?? true,
             'initial_days' => $connection->initial_days ?? 3,
             'auto_sync' => $connection->auto_sync ?? true,
-            'auto_sync_min_minutes' => config('gf.gmail.auto_sync_min_minutes'),
+            'sync_interval_minutes' => $connection->sync_interval_minutes ?? config('gf.gmail.default_sync_interval'),
+            'sync_interval_options' => config('gf.gmail.sync_interval_options'),
             'initial_days_options' => config('gf.gmail.initial_days_options'),
             'last_synced_at' => $connection?->last_synced_at?->toIso8601String(),
             'last_error' => $connection?->last_error,

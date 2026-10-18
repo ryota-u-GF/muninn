@@ -186,4 +186,17 @@ class ImportTest extends TestCase
     {
         $this->loginAs($this->employee)->postJson('/api/imports/demo', ['sample' => 'email'])->assertStatus(404);
     }
+
+    public function test_pending_count_is_per_user_and_ignores_processed_candidates(): void
+    {
+        $c = $this->importJson([['title' => 'A'], ['title' => 'B'], ['title' => 'C']]);
+        $this->postJson("/api/imports/{$c[0]['id']}/reject", ['expected_revision' => 1])->assertOk();
+
+        $this->getJson('/api/imports/pending-count')->assertOk()->assertJsonPath('data.count', 2);
+        // 他の人の候補は数えない（管理者も同じ）
+        $this->loginAs($this->employee2)->getJson('/api/imports/pending-count')->assertJsonPath('data.count', 0);
+        $this->loginAs($this->admin)->getJson('/api/imports/pending-count')->assertJsonPath('data.count', 0);
+        // 外注は使えない
+        $this->loginAs($this->c1)->getJson('/api/imports/pending-count')->assertForbidden();
+    }
 }

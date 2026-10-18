@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AiSettings } from '@/components/gf/ai-settings';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { GmailPanel } from '@/components/gf/gmail-panel';
+import { PENDING_COUNT_EVENT } from '@/hooks/use-auto-gmail-sync';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,13 @@ export default function Imports() {
         try {
             const res = await api<{ data: Candidate[] }>('GET', '/api/imports');
             setCandidates(res.data);
+            // サイドバーの件数を、いまの表示に合わせる
+            window.dispatchEvent(
+                new CustomEvent(PENDING_COUNT_EVENT, {
+                    detail: res.data.filter((c) => c.status === 'pending')
+                        .length,
+                }),
+            );
             setError(null);
             setSelected(
                 (s) =>

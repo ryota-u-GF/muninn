@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $exclude_promotions
  * @property int $initial_days
  * @property bool $auto_sync
+ * @property int $sync_interval_minutes
  * @property CarbonImmutable|null $last_synced_at
  * @property string|null $last_error
  */
@@ -34,6 +35,7 @@ class GmailConnection extends Model
             'exclude_promotions' => 'boolean',
             'initial_days' => 'integer',
             'auto_sync' => 'boolean',
+            'sync_interval_minutes' => 'integer',
             'last_synced_at' => 'immutable_datetime',
         ];
     }
