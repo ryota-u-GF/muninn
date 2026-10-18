@@ -198,14 +198,15 @@ test('タスクの作成・未保存確認・削除と履歴からの復元', as
     await expect(page.getByText('E2Eで作成したタスク')).toBeVisible();
 });
 
-test('今日・自分のタスク・担当者一覧', async ({ page }) => {
+test('今日・自分のタスク・ボードの担当者別', async ({ page }) => {
     await login(page, 'engineer');
     await page.goto('/today');
     await expect(page.getByRole('region', { name: '期限超過' })).toBeVisible();
     await expect(page.getByRole('region', { name: '本日期限' })).toBeVisible();
     await page.goto('/my-tasks');
     await expect(page.getByText('資格試験の勉強（非公開）')).toBeVisible();
-    await page.goto('/people');
+    await page.goto('/people'); // 旧「担当者一覧」のアドレスは、ボードの担当者別へ移る
+    await expect(page).toHaveURL(/view=people/);
     await expect(page.getByRole('region', { name: '未割当' })).toBeVisible();
     await expect(
         page.getByRole('region', { name: '鈴木 一郎（エンジニア）' }),

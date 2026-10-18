@@ -36,7 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::inertia('/', 'board')->name('board');
     Route::inertia('today', 'today')->name('today');
     Route::inertia('my-tasks', 'my-tasks')->name('my-tasks');
-    Route::inertia('people', 'people')->name('people');
+    // 旧「担当者一覧」は、ボードの「担当者別」に統合した。
+    Route::redirect('people', '/?view=people')->name('people');
     Route::inertia('schedule', 'schedule')->name('schedule');
     Route::inertia('documents', 'documents', ['kind' => 'document'])->name('documents');
     Route::inertia('minutes', 'documents', ['kind' => 'minutes'])->name('minutes');

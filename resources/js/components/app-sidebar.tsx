@@ -8,7 +8,6 @@ import {
     Sparkles,
     Sun,
     Tv,
-    Users,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -34,7 +33,6 @@ export function AppSidebar() {
     const tasks: NavItem[] = [
         { title: 'タスクボード', href: '/', icon: KanbanSquare },
         { title: '今日', href: '/today', icon: Sun },
-        { title: '担当者一覧', href: '/people', icon: Users },
         { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
     ];
     const docs: NavItem[] = [

@@ -3,6 +3,7 @@ import { Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
+import { PeopleColumns } from '@/components/gf/people-columns';
 import { TaskCard } from '@/components/gf/task-card';
 import { useTaskEditor } from '@/components/gf/use-task-editor';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,26 @@ import { cn } from '@/lib/utils';
 
 const STATUSES: TaskStatus[] = ['todo', 'doing', 'done'];
 
+type View = 'project' | 'people';
+const VIEW_KEY = 'gf.board.view';
+
+/** 表示の初期値：URL の ?view=people（旧「担当者一覧」のリンク）→ このブラウザの記憶 → 案件別 */
+function initialView(): View {
+    try {
+        if (
+            new URLSearchParams(window.location.search).get('view') === 'people'
+        ) {
+            return 'people';
+        }
+
+        return window.localStorage.getItem(VIEW_KEY) === 'people'
+            ? 'people'
+            : 'project';
+    } catch {
+        return 'project';
+    }
+}
+
 export default function Board() {
     const { auth } = usePage().props;
     const me = auth.user!;
@@ -31,6 +52,8 @@ export default function Board() {
     const [assignee, setAssignee] = useState('');
     const [projectFilter, setProjectFilter] = useState('');
     const [showAllDone, setShowAllDone] = useState(false);
+    const [view, setView] = useState<View>(initialView);
+    const [showDoneInPeople, setShowDoneInPeople] = useState(false);
     const [dragId, setDragId] = useState<number | null>(null);
     // dragover は再描画前に届くことがあるため ref でも保持する
     const dragRef = useRef<number | null>(null);
@@ -45,11 +68,12 @@ export default function Board() {
     const query = useMemo(() => {
         const p = new URLSearchParams();
         if (q) p.set('q', q);
-        if (assignee) p.set('assignee_id', assignee);
+        // 担当者別のときは、全員を並べるので、担当者での絞り込みは使わない
+        if (assignee && view === 'project') p.set('assignee_id', assignee);
         if (showAllDone) p.set('include_old_done', '1');
 
         return p.toString();
-    }, [q, assignee, showAllDone]);
+    }, [q, assignee, showAllDone, view]);
 
     const { tasks, setTasks, loading, error, reload, upsert } = useTasks(query);
     const editor = useTaskEditor({ ...ref, onChanged: upsert });
@@ -146,8 +170,27 @@ export default function Board() {
         }
     };
 
+    const changeView = (next: View) => {
+        setView(next);
+        try {
+            window.localStorage.setItem(VIEW_KEY, next);
+        } catch {
+            // 保存できない環境でも、切り替えは動く
+        }
+    };
+
+    // 担当者別：案件の絞り込みを当てはめ、完了は、切り替えたときだけ出す
+    const peopleTasks = tasks.filter(
+        (t) =>
+            (showDoneInPeople || t.status !== 'done') &&
+            (projectFilter === '' ||
+                String(t.project_id ?? 'none') === projectFilter),
+    );
+
     const filtering =
-        search.trim() !== '' || assignee !== '' || projectFilter !== '';
+        search.trim() !== '' ||
+        (view === 'project' && assignee !== '') ||
+        projectFilter !== '';
 
     return (
         <Page
@@ -164,23 +207,52 @@ export default function Board() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <NativeSelect
-                        aria-label="担当者で絞り込み"
-                        className="w-40"
-                        value={assignee}
-                        onChange={(e) => setAssignee(e.target.value)}
+                    <div
+                        role="group"
+                        aria-label="表示の切り替え"
+                        className="flex rounded-md border p-0.5"
                     >
-                        <option value="">担当者：すべて</option>
-                        <option value="me">自分</option>
-                        <option value="none">未割当</option>
-                        {ref.members
-                            .filter((m) => m.role !== 'tv')
-                            .map((m) => (
-                                <option key={m.id} value={m.id}>
-                                    {m.name}
-                                </option>
-                            ))}
-                    </NativeSelect>
+                        {(
+                            [
+                                ['project', '案件別'],
+                                ['people', '担当者別'],
+                            ] as const
+                        ).map(([v, label]) => (
+                            <button
+                                key={v}
+                                type="button"
+                                aria-pressed={view === v}
+                                onClick={() => changeView(v)}
+                                className={cn(
+                                    'rounded px-3 py-1 text-sm',
+                                    view === v
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-muted-foreground hover:bg-muted',
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {view === 'project' && (
+                        <NativeSelect
+                            aria-label="担当者で絞り込み"
+                            className="w-40"
+                            value={assignee}
+                            onChange={(e) => setAssignee(e.target.value)}
+                        >
+                            <option value="">担当者：すべて</option>
+                            <option value="me">自分</option>
+                            <option value="none">未割当</option>
+                            {ref.members
+                                .filter((m) => m.role !== 'tv')
+                                .map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                        </NativeSelect>
+                    )}
                     <NativeSelect
                         aria-label="案件で絞り込み"
                         className="w-44"
@@ -220,6 +292,30 @@ export default function Board() {
             />
             {(loading && tasks.length === 0) || !ref.loaded ? (
                 <Loading />
+            ) : view === 'people' ? (
+                <div className="space-y-2">
+                    <PeopleColumns
+                        tasks={peopleTasks}
+                        members={ref.members}
+                        today={today}
+                        memberName={ref.memberName}
+                        projectName={ref.projectName}
+                        onOpen={editor.open}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        複数担当のタスクは、それぞれの担当者の列に表示されます。{' '}
+                        {showDoneInPeople
+                            ? '完了も表示しています。'
+                            : '完了は表示していません。'}{' '}
+                        <button
+                            type="button"
+                            className="text-blue-700 underline"
+                            onClick={() => setShowDoneInPeople((v) => !v)}
+                        >
+                            {showDoneInPeople ? '完了を隠す' : '完了も表示する'}
+                        </button>
+                    </p>
+                </div>
             ) : sections.length === 0 ? (
                 <Empty>
                     表示できる案件がありません。
