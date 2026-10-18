@@ -10,12 +10,15 @@ export function useTaskEditor({
     members,
     projectName,
     memberName,
+    reload,
     onChanged,
 }: {
     projects: Project[];
     members: Member[];
     projectName: (id: number | null) => string;
     memberName: (id: number) => string;
+    /** 案件・担当者の一覧を取り直す（ダイアログ内で案件を登録したとき等） */
+    reload?: () => void | Promise<void>;
     onChanged: (task: Task) => void;
 }) {
     const [editing, setEditing] = useState<Task | null>(null);
@@ -30,6 +33,7 @@ export function useTaskEditor({
                 defaults={creating ?? undefined}
                 projects={projects}
                 members={members}
+                onReferenceChanged={reload}
                 onClose={() => {
                     setEditing(null);
                     setCreating(null);

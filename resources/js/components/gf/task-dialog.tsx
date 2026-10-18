@@ -107,6 +107,7 @@ export function TaskDialog({
     defaults,
     projects,
     members,
+    onReferenceChanged,
     onClose,
     onSaved,
     onOpenHistory,
@@ -116,6 +117,7 @@ export function TaskDialog({
     defaults?: Partial<Task>;
     projects: Project[];
     members: Member[];
+    onReferenceChanged?: () => void | Promise<void>;
     onClose: () => void;
     onSaved: (task: Task) => void;
     onOpenHistory?: (task: Task) => void;
@@ -136,6 +138,11 @@ export function TaskDialog({
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [detailOpen, setDetailOpen] = useState(!isNew);
+    const [addedProjects, setAddedProjects] = useState<Project[]>([]);
+    const [addingProject, setAddingProject] = useState(false);
+    const [newProjectName, setNewProjectName] = useState('');
+    const [projectError, setProjectError] = useState<string | null>(null);
+    const isAdmin = me.role === 'admin';
 
     useEffect(() => {
         if (open) {
@@ -151,6 +158,17 @@ export function TaskDialog({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, task?.id]);
 
+    // 別のタブで案件・利用者を登録して戻ってきたら、選択肢を最新にする
+    useEffect(() => {
+        if (!open || !onReferenceChanged) {
+            return;
+        }
+        const onFocus = () => void onReferenceChanged();
+        window.addEventListener('focus', onFocus);
+
+        return () => window.removeEventListener('focus', onFocus);
+    }, [open, onReferenceChanged]);
+
     const dirty = JSON.stringify(form) !== JSON.stringify(initial);
     const canEdit = isNew || (base?.can.update ?? false);
     const canChangeProject = isNew ? true : (base?.can.change_project ?? false);
@@ -161,14 +179,19 @@ export function TaskDialog({
 
     const projectOptions = useMemo(
         () =>
-            projects.filter(
+            [
+                ...projects,
+                ...addedProjects.filter(
+                    (a) => !projects.some((p) => p.id === a.id),
+                ),
+            ].filter(
                 (p) =>
                     !p.archived &&
                     (internal ||
                         p.can_edit_content ||
                         String(p.id) === form.project_id),
             ),
-        [projects, internal, form.project_id],
+        [projects, addedProjects, internal, form.project_id],
     );
     const assignable = members.filter(
         (m) =>
@@ -187,6 +210,31 @@ export function TaskDialog({
         }
         if (confirmDiscard(dirty)) {
             onClose();
+        }
+    };
+
+    const createProject = async () => {
+        const name = newProjectName.trim();
+        if (name === '') {
+            setProjectError('案件名を入力してください。');
+
+            return;
+        }
+        setProjectError(null);
+        try {
+            const res = await api<{ data: Project }>('POST', '/api/projects', {
+                name,
+            });
+            setAddedProjects((list) => [...list, res.data]);
+            set('project_id', String(res.data.id));
+            setNewProjectName('');
+            setAddingProject(false);
+            toast.success(`案件「${res.data.name}」を登録しました`);
+            void onReferenceChanged?.();
+        } catch (e) {
+            setProjectError(
+                e instanceof ApiError ? e.firstError() : '登録に失敗しました。',
+            );
         }
     };
 
@@ -460,6 +508,22 @@ export function TaskDialog({
                         {canChangeAssignees && (
                             <Hint>
                                 チェックした人のタスクになります。選ばない場合は「未割当」になります。
+                                {isAdmin ? (
+                                    <>
+                                        一覧にいない人は、
+                                        <a
+                                            href="/admin/access"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-blue-700 underline"
+                                        >
+                                            「権限・利用者」で登録
+                                        </a>
+                                        してください（別のタブで開きます。登録後にこの画面へ戻ると一覧が更新されます）。
+                                    </>
+                                ) : (
+                                    '一覧にいない人は、管理者に利用者の登録を依頼してください。'
+                                )}
                             </Hint>
                         )}
                         {fieldError('assignee_ids')}
@@ -517,8 +581,72 @@ export function TaskDialog({
                             <Hint>
                                 {internal
                                     ? 'どの案件のタスクか。案件に関係ない作業は「会社共通」のままにします。'
-                                    : 'このタスクが属する案件を選びます。'}
+                                    : '案件が選択肢に無い場合は、社内の担当者に案件の登録を依頼してください。'}
                             </Hint>
+                            {internal && canChangeProject && (
+                                <div className="grid gap-1">
+                                    {addingProject ? (
+                                        <div className="grid gap-1 rounded-md border p-2">
+                                            <Label htmlFor="new-project-name">
+                                                新しい案件名
+                                            </Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    id="new-project-name"
+                                                    value={newProjectName}
+                                                    placeholder="例：社内システム更改"
+                                                    onChange={(e) =>
+                                                        setNewProjectName(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            void createProject();
+                                                        }
+                                                    }}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        void createProject()
+                                                    }
+                                                >
+                                                    登録
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setAddingProject(false);
+                                                        setProjectError(null);
+                                                    }}
+                                                >
+                                                    やめる
+                                                </Button>
+                                            </div>
+                                            {projectError && (
+                                                <p className="text-xs text-red-600">
+                                                    {projectError}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="w-fit text-xs text-blue-700 underline"
+                                            onClick={() =>
+                                                setAddingProject(true)
+                                            }
+                                        >
+                                            ＋ 一覧にない案件をここで登録する
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             {fieldError('project_id')}
                         </div>
                     </div>
