@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Imports\ImportService;
 use App\Enums\CandidateStatus;
+use App\Enums\ExtractKind;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmImportRequest;
 use App\Http\Requests\ExtractImportRequest;
@@ -59,13 +60,16 @@ class ImportController extends Controller
     /** 貼り付けた文章から、本人の AI で候補を作る（文章は保存しない）。 */
     public function extract(ExtractImportRequest $request, TaskExtractor $extractor): JsonResponse
     {
+        $kind = ExtractKind::tryFrom((string) $request->validated('kind')) ?? ExtractKind::Mail;
+
         try {
-            $items = $extractor->extract($request->user(), (string) $request->validated('text'));
+            $items = $extractor->extract($request->user(), (string) $request->validated('text'), $kind);
         } catch (AiNotConfiguredException|AiRequestFailedException $e) {
             throw ValidationException::withMessages(['ai' => $e->getMessage()]);
         }
 
-        $candidates = $items === [] ? [] : $this->imports->createCandidates($request->user(), 'ai_text', $items);
+        $source = $kind === ExtractKind::Minutes ? 'ai_minutes' : 'ai_text';
+        $candidates = $items === [] ? [] : $this->imports->createCandidates($request->user(), $source, $items);
 
         return CandidateResource::collection($candidates)->response()->setStatusCode(201);
     }

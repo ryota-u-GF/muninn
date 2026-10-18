@@ -64,6 +64,11 @@ class CandidateNormalizer
             }
             $assigneeIds[] = $user->id;
         }
+        foreach ((array) ($item['unmatched_assignees'] ?? []) as $unmatchedName) {
+            if (is_string($unmatchedName) && $unmatchedName !== '') {
+                $warnings[] = "担当者「{$unmatchedName}」を登録済みの担当者から特定できなかったため、未設定にしました。";
+            }
+        }
         $assigneeIds = array_values(array_unique($assigneeIds));
         sort($assigneeIds);
 

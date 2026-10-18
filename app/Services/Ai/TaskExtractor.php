@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Enums\ExtractKind;
 use App\Models\User;
 
 /** 文章からタスク候補を取り出す。実装は差し替え可能（現在は Claude のみ）。 */
@@ -15,7 +16,7 @@ interface TaskExtractor
      * @throws AiNotConfiguredException 設定が無いとき
      * @throws AiRequestFailedException 呼び出しに失敗したとき
      */
-    public function extract(User $user, string $text): array;
+    public function extract(User $user, string $text, ExtractKind $kind = ExtractKind::Mail): array;
 
     /**
      * 保存済みの設定で AI に接続できるか確認する（ごく小さなリクエスト）。

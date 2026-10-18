@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ExtractKind;
 use App\Models\AiSetting;
 use App\Models\GmailConnection;
 use App\Models\ImportCandidate;
@@ -87,7 +88,7 @@ class GmailTest extends TestCase
         {
             public function __construct(private ?string $reject) {}
 
-            public function extract(User $user, string $text): array
+            public function extract(User $user, string $text, ExtractKind $kind = ExtractKind::Mail): array
             {
                 if ($this->reject !== null && str_contains($text, $this->reject)) {
                     throw new AiContentRejectedException('処理できません');

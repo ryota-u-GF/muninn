@@ -31,7 +31,8 @@ const EXAMPLE_JSON = `[
 
 const SOURCE_LABELS: Record<string, string> = {
     manual_json: '手動追加',
-    ai_text: '文章から作成',
+    ai_text: 'メールの文章から作成',
+    ai_minutes: '議事録から作成',
     gmail: 'Gmail',
 };
 
@@ -48,6 +49,7 @@ export default function Imports() {
     const [error, setError] = useState<string | null>(null);
     const [json, setJson] = useState('');
     const [text, setText] = useState('');
+    const [kind, setKind] = useState<'mail' | 'minutes'>('mail');
     const [aiReady, setAiReady] = useState(false);
     const [busy, setBusy] = useState(false);
     const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -652,16 +654,36 @@ export default function Imports() {
 
             <details className="rounded-md border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">
-                    メールの文章から候補を作る
+                    文章から候補を作る（メール・議事録）
                 </summary>
                 <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label htmlFor="extract-kind" className="text-sm">
+                            文章の種類
+                        </label>
+                        <NativeSelect
+                            id="extract-kind"
+                            className="w-40"
+                            value={kind}
+                            onChange={(e) =>
+                                setKind(e.target.value as 'mail' | 'minutes')
+                            }
+                        >
+                            <option value="mail">メール</option>
+                            <option value="minutes">議事録</option>
+                        </NativeSelect>
+                    </div>
                     <Textarea
-                        aria-label="メールの文章"
+                        aria-label="文章"
                         rows={8}
                         value={text}
                         maxLength={20000}
                         onChange={(e) => setText(e.target.value)}
-                        placeholder="メールの本文を貼り付けてください"
+                        placeholder={
+                            kind === 'minutes'
+                                ? '議事録（Google Meet のメモなど）を貼り付けてください。「◯◯さんが△△する」など、決まったことと担当者を読み取ります。'
+                                : 'メールの本文を貼り付けてください'
+                        }
                     />
                     <div className="flex flex-wrap items-center gap-2">
                         <Button
@@ -673,6 +695,7 @@ export default function Imports() {
                                         data: Candidate[];
                                     }>('POST', '/api/imports/extract', {
                                         text,
+                                        kind,
                                     });
                                     setText('');
                                     toast.success(

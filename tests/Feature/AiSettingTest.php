@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ExtractKind;
 use App\Models\AiSetting;
 use App\Models\User;
 use App\Services\Ai\AiRequestFailedException;
@@ -92,7 +93,7 @@ class AiSettingTest extends TestCase
     {
         $this->app->bind(TaskExtractor::class, fn () => new class implements TaskExtractor
         {
-            public function extract(User $user, string $text): array
+            public function extract(User $user, string $text, ExtractKind $kind = ExtractKind::Mail): array
             {
                 return [];
             }
