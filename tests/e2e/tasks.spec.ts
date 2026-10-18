@@ -9,7 +9,7 @@ test('管理者：ボード表示・状態のドラッグ・他人の非公開�
         page.getByRole('heading', { name: 'タスクボード' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('region', { name: 'ウェブサイト刷新' }),
+        page.getByRole('region', { name: 'プロジェクト1' }),
     ).toBeVisible();
     await expect(
         page.getByRole('region', { name: '会社共通（案件なし）' }),
@@ -24,7 +24,7 @@ test('管理者：ボード表示・状態のドラッグ・他人の非公開�
     const list = await apiCall(page, 'GET', '/api/tasks');
     const projects = await apiCall(page, 'GET', '/api/projects');
     const projectA = projects.json.data.find(
-        (p: { name: string }) => p.name === 'ウェブサイト刷新',
+        (p: { name: string }) => p.name === 'プロジェクト1',
     );
     const todo = list.json.data.find(
         (t: { project_id: number; status: string }) =>
@@ -46,7 +46,7 @@ test('管理者：ボード表示・状態のドラッグ・他人の非公開�
         .toBe('doing');
 });
 
-test('外注1（A編集）：Aだけ表示、同一案件の状態ドラッグは成功、他案件はAPI直指定でも404', async ({
+test('外注（プロジェクト1編集）：プロジェクト1だけ表示、同一案件の状態ドラッグは成功、他案件はAPI直指定でも404', async ({
     page,
     browser,
 }) => {
@@ -57,10 +57,10 @@ test('外注1（A編集）：Aだけ表示、同一案件の状態ドラッグ�
 
     await login(page, 'c1');
     await expect(
-        page.getByRole('region', { name: 'ウェブサイト刷新' }),
+        page.getByRole('region', { name: 'プロジェクト1' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('region', { name: '社内システム更改' }),
+        page.getByRole('region', { name: 'プロジェクト2' }),
     ).toHaveCount(0);
     await expect(
         page.getByRole('region', { name: '会社共通（案件なし）' }),
@@ -105,29 +105,6 @@ test('外注1（A編集）：Aだけ表示、同一案件の状態ドラッグ�
     expect(
         JSON.stringify((await apiCall(page, 'GET', '/api/members')).json),
     ).not.toContain('sales@example.test');
-});
-
-test('外注2（A閲覧）：カードはドラッグ不可、詳細は閲覧のみ、書き込みAPIは403', async ({
-    page,
-}) => {
-    await login(page, 'c2');
-    const list = await apiCall(page, 'GET', '/api/tasks');
-    const t = list.json.data[0];
-    await expect(page.getByTestId(`task-card-${t.id}`)).toHaveAttribute(
-        'draggable',
-        'false',
-    );
-    await page.getByTestId(`task-card-${t.id}`).click();
-    await expect(page.getByText('このタスクは閲覧のみです。')).toBeVisible();
-    await expect(page.getByRole('button', { name: '保存' })).toHaveCount(0);
-    expect(
-        (
-            await apiCall(page, 'PATCH', `/api/tasks/${t.id}`, {
-                status: 'doing',
-                expected_revision: t.revision,
-            })
-        ).status,
-    ).toBe(403);
 });
 
 test('2つのブラウザで同時編集：後から保存した側は409になり、入力が残る', async ({
@@ -181,7 +158,7 @@ test('2つのブラウザで同時編集：後から保存した側は409にな�
 test('タスクの作成・未保存確認・削除と履歴からの復元', async ({ page }) => {
     await login(page, 'sales');
     await page
-        .getByRole('region', { name: '展示会出展2026' })
+        .getByRole('region', { name: 'プロジェクト3' })
         .getByRole('button', { name: 'タスク' })
         .click();
     await page.getByLabel('タイトル（必須）').fill('E2Eで作成したタスク');

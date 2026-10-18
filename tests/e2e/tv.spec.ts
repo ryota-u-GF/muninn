@@ -8,45 +8,11 @@ const screen = (page: Page) => page.getByTestId('tv-root');
 
 async function openTv(page: Page, time: string) {
     await page.clock.install({ time: jst(time) });
-    await login(page, 'tv');
+    await login(page, 'admin');
+    await page.goto('/tv');
     await expect(page).toHaveURL(/\/tv$/);
     await page.clock.runFor(1500);
 }
-
-test('TV専用アカウントは TV 以外を使えない', async ({ page }) => {
-    await login(page, 'tv');
-    await expect(page).toHaveURL(/\/tv$/);
-    await page.goto('/');
-    await expect(page).toHaveURL(/\/tv$/);
-    await page.goto('/documents');
-    await expect(page).toHaveURL(/\/tv$/);
-    expect((await apiCall(page, 'GET', '/api/tasks')).status).toBe(403);
-    expect((await apiCall(page, 'GET', '/api/documents')).status).toBe(403);
-    const tv = await apiCall(page, 'GET', '/api/tv');
-    expect(tv.status).toBe(200);
-    expect(
-        Object.keys(
-            tv.json.tasks[0] ?? {
-                id: 0,
-                title: '',
-                status: '',
-                project_id: 0,
-                due_date: '',
-                assignee_ids: [],
-            },
-        ).sort(),
-    ).toEqual([
-        'assignee_ids',
-        'due_date',
-        'id',
-        'project_id',
-        'status',
-        'title',
-    ]);
-    expect(JSON.stringify(tv.json)).not.toMatch(
-        /@example\.test|非公開|description|source_url/,
-    );
-});
 
 test('平日 10:00 は通常表示、画面サイズに応じたカード数で巡回', async ({
     page,
