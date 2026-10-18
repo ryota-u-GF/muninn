@@ -75,7 +75,10 @@ export function Loading({ label = '読み込み中…' }: { label?: string }) {
                 className="grid gap-3 md:grid-cols-3 motion-reduce:[&_*]:animate-none"
             >
                 {[0, 1, 2].map((i) => (
-                    <div key={i} className="space-y-2 rounded-lg bg-muted/50 p-2">
+                    <div
+                        key={i}
+                        className="space-y-2 rounded-lg bg-muted/50 p-2"
+                    >
                         <Skeleton className="h-4 w-16" />
                         <Skeleton className="h-16 w-full" />
                         <Skeleton className="h-16 w-full" />
