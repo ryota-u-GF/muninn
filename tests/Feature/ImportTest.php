@@ -149,10 +149,41 @@ class ImportTest extends TestCase
         $this->assertContains('同じ内容の候補は以前に却下されています。', $again[0]['warnings']);
     }
 
-    public function test_synthetic_demo_creates_private_candidates_only(): void
+    public function test_confirm_respects_visibility_and_defaults_to_shared(): void
     {
-        $this->loginAs($this->employee)->postJson('/api/imports/demo', ['sample' => 'email'])->assertCreated()->assertJsonPath('data.0.source', 'demo_email');
-        $this->assertSame(0, Task::query()->count());
-        $this->postJson('/api/imports/demo', ['sample' => 'unknown'])->assertUnprocessable();
+        $c = $this->importJson([
+            ['title' => '共有で作る', 'project_id' => $this->projectA->id],
+            ['title' => '自分だけで作る', 'visibility' => 'private', 'assignee_ids' => [$this->employee->id, $this->employee2->id]],
+        ]);
+        $this->assertSame('shared', $c[0]['payload']['visibility']);
+        $this->assertSame('private', $c[1]['payload']['visibility']);
+        // 非公開の担当者は本人のみ（他の人は警告つきで除外）
+        $this->assertSame([$this->employee->id], $c[1]['payload']['assignee_ids']);
+        $this->assertContains('非公開のため、担当者は本人のみにしました。', $c[1]['warnings']);
+
+        $this->postJson('/api/imports/confirm', ['idempotency_key' => 'visibility-key-1', 'items' => [
+            ['id' => $c[0]['id'], 'expected_revision' => 1],
+            ['id' => $c[1]['id'], 'expected_revision' => 1],
+        ]])->assertCreated();
+
+        $this->assertSame('shared', Task::query()->where('title', '共有で作る')->firstOrFail()->visibility->value);
+        $this->assertSame('private', Task::query()->where('title', '自分だけで作る')->firstOrFail()->visibility->value);
+        // 非公開タスクは他の人（管理者を含む）に見えない
+        $this->loginAs($this->employee2)->getJson('/api/tasks?q=自分だけで作る')->assertJsonCount(0, 'data');
+        $this->loginAs($this->admin)->getJson('/api/tasks?q=自分だけで作る')->assertJsonCount(0, 'data');
+    }
+
+    public function test_visibility_can_be_changed_on_a_candidate(): void
+    {
+        $c = $this->importJson([['title' => '公開区分を変える']]);
+        $this->patchJson("/api/imports/{$c[0]['id']}", ['visibility' => 'private', 'expected_revision' => 1])
+            ->assertOk()->assertJsonPath('data.payload.visibility', 'private');
+        $this->patchJson("/api/imports/{$c[0]['id']}", ['visibility' => 'everyone', 'expected_revision' => 2])
+            ->assertJsonValidationErrors('visibility');
+    }
+
+    public function test_demo_endpoint_is_gone(): void
+    {
+        $this->loginAs($this->employee)->postJson('/api/imports/demo', ['sample' => 'email'])->assertStatus(404);
     }
 }

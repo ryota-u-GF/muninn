@@ -108,6 +108,7 @@ export type CandidatePayload = {
     description: string | null;
     project_id: number | null;
     assignee_ids: number[];
+    visibility: Visibility;
     start_date: string | null;
     due_date: string | null;
     source_type: string;

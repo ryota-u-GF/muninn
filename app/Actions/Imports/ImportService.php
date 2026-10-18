@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * AI 候補：入力 → 本人限定の候補 → 人が確認 → 選択分だけ共有タスク化。
+ * メール（旧AI候補）：入力 → 本人限定の候補 → 人が確認 → 選択分だけタスク化。
  * AI や外部からの直接の共有化経路は持たない。
  */
 class ImportService
@@ -34,7 +34,7 @@ class ImportService
         return DB::transaction(function () use ($owner, $source, $items) {
             $created = [];
             foreach ($items as $item) {
-                $normalized = $this->normalizer->normalize($item);
+                $normalized = $this->normalizer->normalize($item, $owner);
                 $fingerprint = $this->fingerprint($owner, $normalized['payload']);
                 $warnings = $normalized['warnings'];
 
@@ -72,7 +72,7 @@ class ImportService
             abort_unless($candidate->owner_id === $owner->id, 404);
             abort_unless($candidate->status === CandidateStatus::Pending, 409, 'この候補はすでに処理済みです。');
 
-            $normalized = $this->normalizer->normalize(array_merge($candidate->payload ?? [], $item));
+            $normalized = $this->normalizer->normalize(array_merge($candidate->payload ?? [], $item), $owner);
             $this->writer->update($candidate, $expectedRevision, [
                 'payload' => json_encode($normalized['payload'], JSON_UNESCAPED_UNICODE),
                 'warnings' => json_encode($normalized['warnings'], JSON_UNESCAPED_UNICODE),
@@ -103,7 +103,7 @@ class ImportService
     }
 
     /**
-     * 選択した候補を原子的に共有タスク化する。1 件でも競合・不備があれば全体を確定しない。
+     * 選択した候補を原子的にタスク化する（公開区分は候補ごとに共有／非公開）。1 件でも競合・不備があれば全体を確定しない。
      * 同じ本人＋idempotency_key の再送は保存済みの結果を返す。
      *
      * @param  list<array{id: int, expected_revision: int}>  $items
@@ -161,7 +161,7 @@ class ImportService
                         'start_date' => $payload['start_date'] ?? null,
                         'due_date' => $payload['due_date'] ?? null,
                         'source_type' => $payload['source_type'] ?? 'other',
-                        'visibility' => 'shared',
+                        'visibility' => $payload['visibility'] ?? 'shared',
                         'status' => 'todo',
                     ], 'ai_import');
 

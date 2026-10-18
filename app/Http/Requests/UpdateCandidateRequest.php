@@ -19,6 +19,7 @@ class UpdateCandidateRequest extends FormRequest
             'title' => ['sometimes', 'nullable', 'string', 'max:'.config('gf.limits.title')],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.config('gf.limits.task_description')],
             'project_id' => ['sometimes', 'nullable', 'integer'],
+            'visibility' => ['sometimes', 'in:shared,private'],
             'assignee_ids' => ['sometimes', 'array', 'max:20'],
             'assignee_ids.*' => ['integer', 'distinct'],
             'start_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],

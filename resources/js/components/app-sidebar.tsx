@@ -2,7 +2,6 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     CalendarRange,
     ClipboardList,
-    FileText,
     FolderKanban,
     History,
     KanbanSquare,
@@ -40,7 +39,6 @@ export function AppSidebar() {
         { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
     ];
     const docs: NavItem[] = [
-        { title: '文書', href: '/documents', icon: FileText },
         { title: '議事録', href: '/minutes', icon: NotebookPen },
         { title: '変更履歴', href: '/history', icon: History },
     ];
@@ -48,7 +46,7 @@ export function AppSidebar() {
     if (internal) {
         manage.push({ title: '案件', href: '/projects', icon: FolderKanban });
         manage.push({
-            title: 'AI候補（本人のみ）',
+            title: 'メール',
             href: '/imports',
             icon: Sparkles,
         });
@@ -78,7 +76,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain label="タスク" items={tasks} />
-                <NavMain label="文書" items={docs} />
+                <NavMain label="記録" items={docs} />
                 {manage.length > 0 && <NavMain label="管理" items={manage} />}
             </SidebarContent>
 

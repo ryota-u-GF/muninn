@@ -10,12 +10,10 @@ use App\Http\Requests\ImportJsonRequest;
 use App\Http\Requests\UpdateCandidateRequest;
 use App\Http\Resources\CandidateResource;
 use App\Models\ImportCandidate;
-use App\Support\DemoSamples;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
-/** AI 候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
+/** メール（旧AI候補）の候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
 class ImportController extends Controller
 {
     public function __construct(private ImportService $imports) {}
@@ -30,7 +28,6 @@ class ImportController extends Controller
 
         return response()->json([
             'data' => CandidateResource::collection($candidates)->resolve($request),
-            'samples' => collect(DemoSamples::inputs())->map(fn ($s, $k) => ['key' => $k] + $s)->values(),
         ]);
     }
 
@@ -41,15 +38,6 @@ class ImportController extends Controller
 
         return CandidateResource::collection($this->imports->createCandidates($request->user(), 'manual_json', $items))
             ->response()->setStatusCode(201);
-    }
-
-    public function demo(Request $request): JsonResponse
-    {
-        $data = $request->validate(['sample' => ['required', Rule::in(array_keys(DemoSamples::inputs()))]]);
-
-        return CandidateResource::collection(
-            $this->imports->createCandidates($request->user(), 'demo_'.$data['sample'], DemoSamples::candidates($data['sample'])),
-        )->response()->setStatusCode(201);
     }
 
     public function update(UpdateCandidateRequest $request, int $candidate): CandidateResource

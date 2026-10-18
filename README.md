@@ -1,6 +1,6 @@
 # 業務アプリ（Laravel 再構築版）
 
-Golden Field 社内向けの単一会社用業務アプリ。共有タスク・スケジュール・文書／議事録・変更履歴・外注の案件別権限・AI候補の確認フロー・TV 常時表示を 1 つにまとめたもの。
+Golden Field 社内向けの単一会社用業務アプリ。共有タスク・スケジュール・文書／議事録・変更履歴・外注の案件別権限・メール（旧AI候補）の確認フロー・TV 常時表示を 1 つにまとめたもの。
 「GF社内業務アプリ Laravel再構築仕様書 v1.0（2026-10-07）」を正として新規に実装した。
 
 > **状態：開発用デモとして動作確認済み。実運用は未開始。**
@@ -119,7 +119,7 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 | 議事録（一覧／月カレンダー、会議日・参加者・案件・本文検索・日付絞込）                            | `/minutes`      | 同上                 |
 | 変更履歴（閲覧可能な変更の一覧、版のプレビュー、確認して復元）                                    | `/history`      | 同上                 |
 | 案件（作成・名称変更・並び順・アーカイブ）                                                        | `/projects`     | 管理者・社員         |
-| AI候補（本人のみ：合成デモ／手動JSON → 候補 → 選択 → 最終確認）                                   | `/imports`      | 管理者・社員         |
+| メール（本人のみ：手動JSON → 候補 → 選択 → 最終確認。案件と公開区分を選べる）                     | `/imports`      | 管理者・社員         |
 | TV 表示（全画面）                                                                                 | `/tv`           | TV専用・管理者・社員 |
 | 権限・利用者（外注の案件別 view/edit/取消、利用者の役割・有効化）                                 | `/admin/access` | 管理者               |
 
@@ -167,11 +167,10 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 | `POST /{tasks                                                                                                                                           | documents}/{id}/restore` `{version, expected_revision}`                                                                       | 版の内容で新しい版を作成（削除済みも復元される）   |
 | `GET /project-access` / `PUT /project-access` `{user_id, project_id, permission(view                                                                    | edit                                                                                                                          | none), expected_permission}`                       | 外注の案件別権限（管理者、監査記録あり）                   |
 | `GET /users` / `POST /users` / `PATCH /users/{id}` `{role?, is_active?, name?, expected_revision}`                                                      | 利用者管理（管理者）                                                                                                          |
-| `GET /imports`                                                                                                                                          | 本人の候補（未確認＋直近 14 日の処理済み）と合成デモ一覧                                                                      |
+| `GET /imports`                                                                                                                                          | 本人の候補（未確認＋直近 14 日の処理済み）                                                                                    |
 | `POST /imports` `{json}`                                                                                                                                | 手動 JSON（候補の配列、または `{"candidates":[…]}`）                                                                          |
-| `POST /imports/demo` `{sample: email                                                                                                                    | minutes                                                                                                                       | voice}`                                            | 合成デモから候補作成（実際の AI 推論ではない）             |
 | `PATCH /imports/{id}` / `POST /imports/{id}/reject`                                                                                                     | 候補の編集・却下（却下で本文削除）                                                                                            |
-| `POST /imports/confirm` `{idempotency_key, items:[{id, expected_revision}]}`                                                                            | 選択分を原子的に共有タスク化。同じキーの再送は保存済みの結果（`replayed: true`）                                              |
+| `POST /imports/confirm` `{idempotency_key, items:[{id, expected_revision}]}`                                                                            | 選択分を原子的にタスク化（公開区分は候補ごとに共有／自分のみ）。同じキーの再送は保存済みの結果（`replayed: true`）            |
 | `GET /tv`                                                                                                                                               | TV 用。`generated_at, today, users[id,name], projects[id,name], tasks[id,title,status,project_id,due_date,assignee_ids]` のみ |
 
 回数制限：ログイン（IP 30 回／分・アカウント 10 回／分）、取り込み 30 回／分、ファイル取込 20 回／分、API 全体 600 回／分。
@@ -235,7 +234,7 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 ## 11. 既知の制限
 
 - Google ログイン・Google カレンダー（予定詳細／free-busy）・MCP・LLM は**未接続**（カレンダー・MCP は初版未実装、後続工程）。未接続を「空き」と扱う画面はない。
-- AI 候補の入力は合成デモと手動 JSON のみ。Gmail・Drive・録音・自動解析は対象外。
+- メールの候補の入力は手動 JSON のみ（Gmail の自動取得・AI による抽出は未実装）。Drive・録音・自動解析は対象外。
 - API トークンは発行していない（MCP 用トークンは後続工程で設計。外注・TV には発行しない方針）。
 - 文書はプレーンテキストのみ（リッチブロック・共同カーソル・コメントは対象外）。PDF・Word の取込は対象外。
 - スケジュールの日付ドラッグ変更は未実装（初版必須ではない）。

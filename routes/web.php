@@ -74,7 +74,6 @@ Route::middleware('auth')->group(function () {
         Route::middleware('can:use-imports')->group(function () {
             Route::get('imports', [ImportController::class, 'index']);
             Route::post('imports', [ImportController::class, 'store'])->middleware('throttle:imports');
-            Route::post('imports/demo', [ImportController::class, 'demo'])->middleware('throttle:imports');
             Route::post('imports/confirm', [ImportController::class, 'confirm'])->middleware('throttle:imports');
             Route::patch('imports/{candidate}', [ImportController::class, 'update'])->whereNumber('candidate');
             Route::post('imports/{candidate}/reject', [ImportController::class, 'reject'])->whereNumber('candidate');

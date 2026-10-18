@@ -1,4 +1,5 @@
-import { CheckSquare, Sparkles, X } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { CheckSquare, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
@@ -10,9 +11,7 @@ import { useReferenceData } from '@/hooks/use-reference-data';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import { api, ApiError, newIdempotencyKey } from '@/lib/api';
 import { formatJa } from '@/lib/dates';
-import type { Candidate, CandidatePayload } from '@/lib/types';
-
-type Sample = { key: string; label: string; text: string };
+import type { Candidate, CandidatePayload, Visibility } from '@/lib/types';
 
 const EXAMPLE_JSON = `[
   {
@@ -20,6 +19,7 @@ const EXAMPLE_JSON = `[
     "description": "メールの依頼より",
     "project_id": null,
     "assignee_ids": [],
+    "visibility": "shared",
     "start_date": null,
     "due_date": "2026-10-20",
     "source_type": "email"
@@ -27,16 +27,19 @@ const EXAMPLE_JSON = `[
 ]`;
 
 const SOURCE_LABELS: Record<string, string> = {
-    manual_json: '手動JSON',
-    demo_email: '合成メール（デモ）',
-    demo_minutes: '合成議事録（デモ）',
-    demo_voice: '合成音声メモ（デモ）',
+    manual_json: '手動追加',
+    gmail: 'Gmail',
+};
+
+const VISIBILITY_LABELS: Record<Visibility, string> = {
+    shared: '共有（他のメンバーにも見える）',
+    private: '自分のみ',
 };
 
 export default function Imports() {
     const ref = useReferenceData();
+    const me = usePage().props.auth.user!;
     const [candidates, setCandidates] = useState<Candidate[]>([]);
-    const [samples, setSamples] = useState<Sample[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [json, setJson] = useState('');
@@ -53,12 +56,8 @@ export default function Imports() {
 
     const load = useCallback(async () => {
         try {
-            const res = await api<{ data: Candidate[]; samples: Sample[] }>(
-                'GET',
-                '/api/imports',
-            );
+            const res = await api<{ data: Candidate[] }>('GET', '/api/imports');
             setCandidates(res.data);
-            setSamples(res.samples);
             setError(null);
             setSelected(
                 (s) =>
@@ -133,7 +132,7 @@ export default function Imports() {
                 },
             );
             toast.success(
-                `${res.task_ids.length}件の共有タスクを作成しました${res.replayed ? '（再送：作成済みの結果）' : ''}`,
+                `${res.task_ids.length}件のタスクを作成しました${res.replayed ? '（再送：作成済みの結果）' : ''}`,
             );
             setConfirmOpen(false);
             setConfirmKey(null);
@@ -146,68 +145,30 @@ export default function Imports() {
     );
 
     return (
-        <Page title="AI候補（本人のみ）">
+        <Page title="メール">
             <div className="rounded-md border border-sky-300 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
                 <p className="font-semibold">
-                    入力 → 候補 → 人が確認 → 共有タスク化
+                    メールから見つけたタスクの候補を、確認して登録します
                 </p>
                 <ul className="mt-1 list-disc pl-5 text-xs">
                     <li>
-                        候補はあなただけが閲覧できます（管理者を含む他の人には表示されません）。
+                        候補はあなただけが見られます（管理者を含む他の人には表示されません）。
                     </li>
                     <li>
-                        選択して最終確認したものだけが共有タスクになります。AI
-                        から直接共有タスクを作る経路はありません。
+                        確認して承認したものだけがタスクになります。案件と公開区分（共有／自分のみ）を選べます。
                     </li>
-                    <li>
-                        この画面のデモは<strong>合成データ</strong>です。実際の
-                        AI 推論・Gmail
-                        取得・録音・自動解析は行っていません（未接続）。
-                    </li>
-                    <li>
-                        不明な案件・担当者・期限は推測せず「未設定」にして警告を表示します。
-                    </li>
+                    <li>メールの自動取得は準備中です（未接続）。</li>
                 </ul>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-                <section className="space-y-2 rounded-md border p-3">
-                    <h2 className="font-semibold">合成デモから候補を作る</h2>
-                    {samples.map((s) => (
-                        <details key={s.key} className="rounded border p-2">
-                            <summary className="cursor-pointer text-sm">
-                                {s.label}（合成データ）
-                            </summary>
-                            <pre className="mt-2 text-xs whitespace-pre-wrap text-muted-foreground">
-                                {s.text}
-                            </pre>
-                            <Button
-                                size="sm"
-                                className="mt-2"
-                                disabled={busy}
-                                onClick={() =>
-                                    run(async () => {
-                                        await api('POST', '/api/imports/demo', {
-                                            sample: s.key,
-                                        });
-                                        toast.success(
-                                            '候補を作成しました（まだ共有されていません）',
-                                        );
-                                        await load();
-                                    })
-                                }
-                            >
-                                <Sparkles className="mr-1 size-4" />
-                                この合成データから候補を作る
-                            </Button>
-                        </details>
-                    ))}
-                </section>
-                <section className="space-y-2 rounded-md border p-3">
-                    <h2 className="font-semibold">手動 JSON 取り込み</h2>
+            <details className="rounded-md border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">
+                    候補を手で追加する（JSON）
+                </summary>
+                <div className="mt-2 space-y-2">
                     <p className="text-xs text-muted-foreground">
                         候補の配列（title, description, project_id,
-                        assignee_ids, start_date, due_date,
+                        assignee_ids, visibility, start_date, due_date,
                         source_type）を貼り付けます。日付は YYYY-MM-DD。
                     </p>
                     <Textarea
@@ -234,7 +195,7 @@ export default function Imports() {
                                     await api('POST', '/api/imports', { json });
                                     setJson('');
                                     toast.success(
-                                        '候補を作成しました（まだ共有されていません）',
+                                        '候補を作成しました（まだタスクにはなっていません）',
                                     );
                                     await load();
                                 })
@@ -243,8 +204,8 @@ export default function Imports() {
                             候補を作成
                         </Button>
                     </div>
-                </section>
-            </div>
+                </div>
+            </details>
 
             <ErrorBanner
                 message={error ?? ref.error}
@@ -369,6 +330,57 @@ export default function Imports() {
                                                             ),
                                                         )}
                                                     </NativeSelect>
+                                                    <NativeSelect
+                                                        aria-label="公開区分"
+                                                        value={
+                                                            editing.payload
+                                                                .visibility
+                                                        }
+                                                        onChange={(e) => {
+                                                            const v = e.target
+                                                                .value as Visibility;
+                                                            setEditing({
+                                                                id: c.id,
+                                                                payload: {
+                                                                    ...editing.payload,
+                                                                    visibility:
+                                                                        v,
+                                                                    // 非公開の担当者は本人のみ
+                                                                    assignee_ids:
+                                                                        v ===
+                                                                        'private'
+                                                                            ? editing.payload.assignee_ids.filter(
+                                                                                  (
+                                                                                      x,
+                                                                                  ) =>
+                                                                                      x ===
+                                                                                      me.id,
+                                                                              )
+                                                                            : editing
+                                                                                  .payload
+                                                                                  .assignee_ids,
+                                                                },
+                                                            });
+                                                        }}
+                                                    >
+                                                        {(
+                                                            [
+                                                                'shared',
+                                                                'private',
+                                                            ] as const
+                                                        ).map((v) => (
+                                                            <option
+                                                                key={v}
+                                                                value={v}
+                                                            >
+                                                                {
+                                                                    VISIBILITY_LABELS[
+                                                                        v
+                                                                    ]
+                                                                }
+                                                            </option>
+                                                        ))}
+                                                    </NativeSelect>
                                                     <Input
                                                         aria-label="開始日"
                                                         type="date"
@@ -411,50 +423,60 @@ export default function Imports() {
                                                         }
                                                     />
                                                     <div className="flex flex-wrap gap-x-3 gap-y-1 sm:col-span-2">
-                                                        {assignable.map((m) => (
-                                                            <label
-                                                                key={m.id}
-                                                                className="flex items-center gap-1 text-xs"
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={editing.payload.assignee_ids.includes(
-                                                                        m.id,
-                                                                    )}
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        setEditing(
-                                                                            {
-                                                                                id: c.id,
-                                                                                payload:
-                                                                                    {
-                                                                                        ...editing.payload,
-                                                                                        assignee_ids:
-                                                                                            e
-                                                                                                .target
-                                                                                                .checked
-                                                                                                ? [
-                                                                                                      ...editing
-                                                                                                          .payload
-                                                                                                          .assignee_ids,
-                                                                                                      m.id,
-                                                                                                  ]
-                                                                                                : editing.payload.assignee_ids.filter(
-                                                                                                      (
-                                                                                                          x,
-                                                                                                      ) =>
-                                                                                                          x !==
+                                                        {assignable
+                                                            .filter(
+                                                                (m) =>
+                                                                    editing
+                                                                        .payload
+                                                                        .visibility !==
+                                                                        'private' ||
+                                                                    m.id ===
+                                                                        me.id,
+                                                            )
+                                                            .map((m) => (
+                                                                <label
+                                                                    key={m.id}
+                                                                    className="flex items-center gap-1 text-xs"
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={editing.payload.assignee_ids.includes(
+                                                                            m.id,
+                                                                        )}
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            setEditing(
+                                                                                {
+                                                                                    id: c.id,
+                                                                                    payload:
+                                                                                        {
+                                                                                            ...editing.payload,
+                                                                                            assignee_ids:
+                                                                                                e
+                                                                                                    .target
+                                                                                                    .checked
+                                                                                                    ? [
+                                                                                                          ...editing
+                                                                                                              .payload
+                                                                                                              .assignee_ids,
                                                                                                           m.id,
-                                                                                                  ),
-                                                                                    },
-                                                                            },
-                                                                        )
-                                                                    }
-                                                                />
-                                                                {m.name}
-                                                            </label>
-                                                        ))}
+                                                                                                      ]
+                                                                                                    : editing.payload.assignee_ids.filter(
+                                                                                                          (
+                                                                                                              x,
+                                                                                                          ) =>
+                                                                                                              x !==
+                                                                                                              m.id,
+                                                                                                      ),
+                                                                                        },
+                                                                                },
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    {m.name}
+                                                                </label>
+                                                            ))}
                                                     </div>
                                                     <Textarea
                                                         aria-label="説明"
@@ -535,6 +557,11 @@ export default function Imports() {
                                                         {SOURCE_LABELS[
                                                             c.source
                                                         ] ?? c.source}
+                                                        ・公開：
+                                                        {p.visibility ===
+                                                        'private'
+                                                            ? '自分のみ'
+                                                            : '共有'}
                                                         ・案件：
                                                         {p.project_id === null
                                                             ? '未設定'
@@ -646,20 +673,24 @@ export default function Imports() {
 
             <ConfirmDialog
                 open={confirmOpen}
-                title={`${chosen.length} 件を共有タスクとして作成しますか？`}
-                confirmLabel="共有タスクを作成する"
+                title={`${chosen.length} 件をタスクとして作成しますか？`}
+                confirmLabel="タスクを作成する"
                 busy={busy}
                 onConfirm={() => void confirm()}
                 onCancel={() => setConfirmOpen(false)}
             >
                 <p className="mb-2">
-                    作成すると会社の共有タスクとして他のメンバーにも表示されます。1
+                    「共有」のタスクは、他のメンバーにも表示されます。「自分のみ」のタスクは、あなただけに表示されます。1
                     件でも他の画面で変更されていた場合は、全体を作成しません。
                 </p>
                 <ul className="max-h-60 list-disc overflow-auto pl-5">
                     {chosen.map((c) => (
                         <li key={c.id}>
                             {c.payload?.title}（
+                            {c.payload?.visibility === 'private'
+                                ? '自分のみ'
+                                : '共有'}
+                            ・
                             {c.payload?.project_id
                                 ? ref.projectName(c.payload.project_id)
                                 : '会社共通'}

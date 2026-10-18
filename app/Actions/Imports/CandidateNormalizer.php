@@ -19,7 +19,7 @@ class CandidateNormalizer
      * @param  array<string, mixed>  $item
      * @return array{payload: array<string, mixed>, warnings: list<string>}
      */
-    public function normalize(array $item): array
+    public function normalize(array $item, ?User $owner = null): array
     {
         $warnings = [];
         $limits = config('gf.limits');
@@ -67,6 +67,18 @@ class CandidateNormalizer
         $assigneeIds = array_values(array_unique($assigneeIds));
         sort($assigneeIds);
 
+        // 公開区分：指定が無い・不明な値は共有。非公開の担当者は作成者本人のみ。
+        $visibility = ($item['visibility'] ?? null) === Visibility::Private->value
+            ? Visibility::Private->value
+            : Visibility::Shared->value;
+        if ($visibility === Visibility::Private->value && $owner !== null) {
+            $own = array_values(array_intersect($assigneeIds, [$owner->id]));
+            if ($own !== $assigneeIds) {
+                $warnings[] = '非公開のため、担当者は本人のみにしました。';
+            }
+            $assigneeIds = $own;
+        }
+
         $startDate = $this->date($item['start_date'] ?? null, '開始日', $warnings);
         $dueDate = $this->date($item['due_date'] ?? null, '期限', $warnings);
         if ($startDate !== null && $dueDate !== null && $startDate > $dueDate) {
@@ -85,6 +97,7 @@ class CandidateNormalizer
                 'description' => $description === '' ? null : $description,
                 'project_id' => $projectId,
                 'assignee_ids' => $assigneeIds,
+                'visibility' => $visibility,
                 'start_date' => $startDate,
                 'due_date' => $dueDate,
                 'source_type' => $sourceType,
