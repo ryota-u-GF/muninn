@@ -13,6 +13,7 @@ use App\Services\Gmail\GmailSyncer;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
@@ -115,19 +116,19 @@ class GmailTest extends TestCase
         $this->connect($this->employee, ['last_synced_at' => now()]);
         $this->loginAs($this->employee);
 
-        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => 'タスク', 'exclude_promotions' => false, 'initial_days' => 7])
+        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => 'タスク', 'exclude_promotions' => false, 'initial_days' => 7, 'auto_sync' => false])
             ->assertOk()->assertJsonPath('data.scope_mode', 'label')->assertJsonPath('data.label_name', 'タスク')
-            ->assertJsonPath('data.initial_days', 7)->assertJsonPath('data.last_synced_at', null);
+            ->assertJsonPath('data.initial_days', 7)->assertJsonPath('data.auto_sync', false)->assertJsonPath('data.last_synced_at', null);
 
-        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => '', 'exclude_promotions' => true, 'initial_days' => 3])
+        $this->putJson('/api/gmail', ['scope_mode' => 'label', 'label_name' => '', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])
             ->assertJsonValidationErrors('label_name');
-        $this->putJson('/api/gmail', ['scope_mode' => 'all', 'exclude_promotions' => true, 'initial_days' => 3])
+        $this->putJson('/api/gmail', ['scope_mode' => 'all', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])
             ->assertJsonValidationErrors('scope_mode');
-        $this->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 365])
+        $this->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 365, 'auto_sync' => true])
             ->assertJsonValidationErrors('initial_days');
 
         $this->loginAs($this->employee2)
-            ->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 3])->assertNotFound();
+            ->putJson('/api/gmail', ['scope_mode' => 'inbox', 'exclude_promotions' => true, 'initial_days' => 3, 'auto_sync' => true])->assertNotFound();
     }
 
     public function test_contractors_and_guests_cannot_use_gmail(): void
@@ -222,6 +223,75 @@ class GmailTest extends TestCase
         $this->assertStringContainsString('連携', (string) $res->json('errors.gmail.0'));
         $this->assertNotNull(GmailConnection::query()->firstOrFail()->last_error);
         $this->assertSame(0, MailMessage::query()->count());
+    }
+
+    public function test_auto_sync_does_nothing_when_turned_off(): void
+    {
+        $this->connect($this->employee, ['auto_sync' => false]);
+        $this->fakeGoogle(['m1']);
+        $this->fakeExtractor();
+
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync', ['auto' => true])
+            ->assertOk()->assertJsonPath('data.status', 'disabled')->assertJsonPath('data.processed', 0);
+        Http::assertNothingSent();
+        $this->assertSame(0, MailMessage::query()->count());
+    }
+
+    public function test_auto_sync_skips_when_the_last_sync_was_recent_but_manual_sync_does_not(): void
+    {
+        $this->connect($this->employee, ['last_synced_at' => now()->subMinutes(5)]);
+        $this->fakeGoogle(['m1']);
+        $this->fakeExtractor();
+        $this->loginAs($this->employee);
+
+        $this->postJson('/api/gmail/sync', ['auto' => true])->assertOk()->assertJsonPath('data.status', 'recent');
+        Http::assertNothingSent();
+
+        // 手動の「いま取得」は、間隔に関係なく実行する
+        $this->postJson('/api/gmail/sync')->assertOk()->assertJsonPath('data.status', 'done')->assertJsonPath('data.processed', 1);
+    }
+
+    public function test_auto_sync_runs_when_enough_time_has_passed(): void
+    {
+        $this->connect($this->employee, ['last_synced_at' => now()->subMinutes(30)]);
+        $this->fakeGoogle(['m1', 'm2']);
+        $this->fakeExtractor();
+
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync', ['auto' => true])
+            ->assertOk()->assertJsonPath('data.status', 'done')->assertJsonPath('data.processed', 2);
+        $this->assertSame(2, ImportCandidate::query()->count());
+    }
+
+    public function test_concurrent_sync_for_the_same_user_is_not_run_twice(): void
+    {
+        $this->connect($this->employee);
+        $this->fakeGoogle(['m1']);
+        $this->fakeExtractor();
+
+        $lock = Cache::lock('gmail-sync:'.$this->employee->id, 30);
+        $this->assertTrue($lock->get());
+        try {
+            $this->loginAs($this->employee)->postJson('/api/gmail/sync')
+                ->assertOk()->assertJsonPath('data.status', 'busy');
+            Http::assertNothingSent();
+        } finally {
+            $lock->release();
+        }
+
+        // ロックが外れれば実行できる
+        $this->postJson('/api/gmail/sync')->assertOk()->assertJsonPath('data.status', 'done');
+        $this->assertSame(1, MailMessage::query()->count());
+    }
+
+    public function test_the_lock_is_released_even_when_sync_fails(): void
+    {
+        $this->connect($this->employee);
+        $this->fakeGoogle(['m1']);
+
+        // AI キー未設定で失敗しても、次の取得を妨げない
+        $this->loginAs($this->employee)->postJson('/api/gmail/sync')->assertUnprocessable();
+        $this->fakeExtractor();
+        $this->postJson('/api/gmail/sync')->assertOk()->assertJsonPath('data.status', 'done');
     }
 
     public function test_sync_requires_a_connection(): void

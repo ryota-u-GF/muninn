@@ -7,6 +7,8 @@ use App\Models\GmailConnection;
 use App\Models\MailMessage;
 use App\Models\User;
 use App\Services\Ai\AiContentRejectedException;
+use App\Services\Ai\AiNotConfiguredException;
+use App\Services\Ai\AiRequestFailedException;
 use App\Services\Ai\TaskExtractor;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +31,8 @@ class GmailSyncer
      * @return array{processed: int, skipped: int, candidates: int, has_more: bool}
      *
      * @throws GmailException
+     * @throws AiNotConfiguredException AI のキーが未設定のとき
+     * @throws AiRequestFailedException AI の呼び出しに失敗したとき（そのメールは記録せず、次回やり直す）
      */
     public function sync(User $user): array
     {

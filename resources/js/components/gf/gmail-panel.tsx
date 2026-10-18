@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/textarea';
+import { MAIL_SYNCED_EVENT } from '@/hooks/use-auto-gmail-sync';
 import { api, ApiError } from '@/lib/api';
 
 type GmailData = {
@@ -15,6 +16,8 @@ type GmailData = {
     exclude_promotions: boolean;
     initial_days: number;
     initial_days_options: number[];
+    auto_sync: boolean;
+    auto_sync_min_minutes: number;
     last_synced_at: string | null;
     last_error: string | null;
 };
@@ -52,6 +55,7 @@ export function GmailPanel({
     const [label, setLabel] = useState('');
     const [exclude, setExclude] = useState(true);
     const [days, setDays] = useState(3);
+    const [autoSync, setAutoSync] = useState(true);
     const [busy, setBusy] = useState(false);
 
     const apply = useCallback((next: GmailData) => {
@@ -60,6 +64,7 @@ export function GmailPanel({
         setLabel(next.label_name ?? '');
         setExclude(next.exclude_promotions);
         setDays(next.initial_days);
+        setAutoSync(next.auto_sync);
     }, []);
 
     useEffect(() => {
@@ -77,6 +82,19 @@ export function GmailPanel({
             window.history.replaceState(null, '', url.pathname + url.search);
         }
     }, [apply]);
+
+    // アプリを開いたときの自動取得が終わったら、最終取得日時と候補を更新する
+    useEffect(() => {
+        const refresh = () => {
+            api<{ data: GmailData }>('GET', '/api/gmail')
+                .then((res) => apply(res.data))
+                .catch(() => undefined);
+            void onSynced();
+        };
+        window.addEventListener(MAIL_SYNCED_EVENT, refresh);
+
+        return () => window.removeEventListener(MAIL_SYNCED_EVENT, refresh);
+    }, [apply, onSynced]);
 
     const run = async (fn: () => Promise<void>) => {
         setBusy(true);
@@ -210,6 +228,18 @@ export function GmailPanel({
                             />
                             プロモーション・ソーシャル・フォーラムのメールを除く
                         </label>
+                        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                            <input
+                                type="checkbox"
+                                checked={autoSync}
+                                onChange={(e) => setAutoSync(e.target.checked)}
+                            />
+                            アプリを開いたときに、自動で取得する
+                            <span className="text-xs text-muted-foreground">
+                                （前回から{data.auto_sync_min_minutes}
+                                分以上あいているとき）
+                            </span>
+                        </label>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Button
@@ -230,6 +260,7 @@ export function GmailPanel({
                                                 mode === 'label' ? label : null,
                                             exclude_promotions: exclude,
                                             initial_days: days,
+                                            auto_sync: autoSync,
                                         },
                                     );
                                     apply(res.data);

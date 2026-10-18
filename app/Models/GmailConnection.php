@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $label_name
  * @property bool $exclude_promotions
  * @property int $initial_days
+ * @property bool $auto_sync
  * @property CarbonImmutable|null $last_synced_at
  * @property string|null $last_error
  */
@@ -32,6 +33,7 @@ class GmailConnection extends Model
             'refresh_token' => 'encrypted',
             'exclude_promotions' => 'boolean',
             'initial_days' => 'integer',
+            'auto_sync' => 'boolean',
             'last_synced_at' => 'immutable_datetime',
         ];
     }

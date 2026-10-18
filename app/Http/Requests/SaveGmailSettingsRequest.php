@@ -20,6 +20,7 @@ class SaveGmailSettingsRequest extends FormRequest
             'label_name' => ['nullable', 'required_if:scope_mode,label', 'string', 'max:100'],
             'exclude_promotions' => ['required', 'boolean'],
             'initial_days' => ['required', 'integer', Rule::in(config('gf.gmail.initial_days_options'))],
+            'auto_sync' => ['required', 'boolean'],
         ];
     }
 
