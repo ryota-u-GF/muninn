@@ -146,6 +146,9 @@ export default function Board() {
         }
     };
 
+    const filtering =
+        search.trim() !== '' || assignee !== '' || projectFilter !== '';
+
     return (
         <Page
             title="タスクボード"
@@ -192,14 +195,19 @@ export default function Board() {
                         ))}
                         {internal && <option value="none">会社共通</option>}
                     </NativeSelect>
-                    <label className="flex items-center gap-1 text-sm">
-                        <input
-                            type="checkbox"
-                            checked={showAllDone}
-                            onChange={(e) => setShowAllDone(e.target.checked)}
-                        />
-                        古い完了も表示
-                    </label>
+                    {filtering && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                                setSearch('');
+                                setAssignee('');
+                                setProjectFilter('');
+                            }}
+                        >
+                            絞り込みを解除
+                        </Button>
+                    )}
                 </>
             }
         >
@@ -321,18 +329,26 @@ export default function Board() {
                                                     }}
                                                 />
                                             ))}
-                                            {status === 'done' &&
-                                                !showAllDone && (
-                                                    <p className="px-1 text-[11px] text-muted-foreground">
-                                                        直近7日より前の完了は「古い完了も表示」で確認できます
-                                                    </p>
-                                                )}
                                         </div>
                                     );
                                 })}
                             </div>
                         </section>
                     ))}
+                    <p className="text-xs text-muted-foreground">
+                        {showAllDone
+                            ? '古い完了も表示しています。'
+                            : '完了は直近7日分を表示しています。'}{' '}
+                        <button
+                            type="button"
+                            className="text-blue-700 underline"
+                            onClick={() => setShowAllDone((v) => !v)}
+                        >
+                            {showAllDone
+                                ? '直近だけに戻す'
+                                : '古い完了も表示する'}
+                        </button>
+                    </p>
                 </div>
             )}
             {editor.element}
