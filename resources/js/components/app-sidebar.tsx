@@ -1,11 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     CalendarRange,
-    ClipboardList,
     FolderKanban,
     History,
     KanbanSquare,
-    NotebookPen,
     ShieldCheck,
     Sparkles,
     Sun,
@@ -36,12 +34,10 @@ export function AppSidebar() {
     const tasks: NavItem[] = [
         { title: 'タスクボード', href: '/', icon: KanbanSquare },
         { title: '今日', href: '/today', icon: Sun },
-        { title: '自分のタスク', href: '/my-tasks', icon: ClipboardList },
         { title: '担当者一覧', href: '/people', icon: Users },
         { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
     ];
     const docs: NavItem[] = [
-        { title: '議事録', href: '/minutes', icon: NotebookPen },
         { title: '変更履歴', href: '/history', icon: History },
     ];
     // メールは社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
