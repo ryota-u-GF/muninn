@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
 
@@ -70,6 +71,7 @@ export default function AdminAccess() {
     const [error, setError] = useState<string | null>(null);
     const [pending, setPending] = useState<Pending | null>(null);
     const [busy, setBusy] = useState(false);
+    const [adding, setAdding] = useState(false);
     const [newUser, setNewUser] = useState({
         name: '',
         email: '',
@@ -143,6 +145,7 @@ export default function AdminAccess() {
             await api('POST', '/api/users', newUser);
             toast.success('利用者を登録しました');
             setNewUser({ name: '', email: '', role: 'employee' });
+            setAdding(false);
             await load();
         } catch (e) {
             toast.error(
@@ -160,21 +163,118 @@ export default function AdminAccess() {
                 <Loading />
             ) : (
                 <>
-                    <section className="space-y-2">
-                        <h2 className="font-semibold">担当者（利用者）</h2>
-                        <p className="text-xs text-muted-foreground">
-                            未登録の Google
-                            アカウントは自動登録されません（許可ドメイン設定時のみ「社員」として作成）。役割の変更・無効化はその利用者の既存セッションを即時に失効させます。
-                        </p>
+                    <section className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="font-semibold">
+                                担当者（利用者）
+                                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                    {users.length}人
+                                </span>
+                            </h2>
+                            {!adding && (
+                                <Button
+                                    size="sm"
+                                    onClick={() => setAdding(true)}
+                                >
+                                    ＋ 担当者を追加
+                                </Button>
+                            )}
+                        </div>
+
+                        {adding && (
+                            <form
+                                className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1.5fr_8rem_auto] sm:items-end"
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    void addUser();
+                                }}
+                            >
+                                <div className="grid gap-1">
+                                    <Label htmlFor="new-user-name">氏名</Label>
+                                    <Input
+                                        id="new-user-name"
+                                        aria-label="氏名"
+                                        value={newUser.name}
+                                        maxLength={100}
+                                        autoFocus
+                                        onChange={(e) =>
+                                            setNewUser({
+                                                ...newUser,
+                                                name: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="new-user-email">
+                                        メールアドレス
+                                    </Label>
+                                    <Input
+                                        id="new-user-email"
+                                        aria-label="メールアドレス"
+                                        type="email"
+                                        value={newUser.email}
+                                        onChange={(e) =>
+                                            setNewUser({
+                                                ...newUser,
+                                                email: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="new-user-role">役割</Label>
+                                    <NativeSelect
+                                        id="new-user-role"
+                                        aria-label="新しい利用者の役割"
+                                        value={newUser.role}
+                                        onChange={(e) =>
+                                            setNewUser({
+                                                ...newUser,
+                                                role: e.target.value,
+                                            })
+                                        }
+                                    >
+                                        {Object.entries(ROLE_LABELS).map(
+                                            ([k, v]) => (
+                                                <option key={k} value={k}>
+                                                    {v}
+                                                </option>
+                                            ),
+                                        )}
+                                    </NativeSelect>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        disabled={
+                                            busy ||
+                                            !newUser.name ||
+                                            !newUser.email
+                                        }
+                                    >
+                                        登録
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setAdding(false)}
+                                    >
+                                        やめる
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
+
                         <div className="overflow-x-auto rounded-md border">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted text-left text-xs">
                                     <tr>
                                         <th className="px-3 py-2">氏名</th>
-                                        <th className="px-3 py-2">メール</th>
                                         <th className="px-3 py-2">役割</th>
                                         <th className="px-3 py-2">状態</th>
-                                        <th className="px-3 py-2">Google</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -184,10 +284,12 @@ export default function AdminAccess() {
                                         return (
                                             <tr key={u.id}>
                                                 <td className="px-3 py-2">
-                                                    {u.name}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {u.email}
+                                                    <div>{u.name}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {u.email}
+                                                        {u.google_linked &&
+                                                            '・Google連携済み'}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     <NativeSelect
@@ -221,33 +323,41 @@ export default function AdminAccess() {
                                                     </NativeSelect>
                                                 </td>
                                                 <td className="px-3 py-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={self}
-                                                        onClick={() =>
-                                                            setPending({
-                                                                kind: 'user',
-                                                                user: u,
-                                                                changes: {
-                                                                    is_active:
-                                                                        !u.is_active,
-                                                                },
-                                                                text: u.is_active
-                                                                    ? `${u.name} を無効化します。ログイン中のセッションも失効します。`
-                                                                    : `${u.name} を有効にします。`,
-                                                            })
-                                                        }
-                                                    >
-                                                        {u.is_active
-                                                            ? '有効（無効化する）'
-                                                            : '無効（有効にする）'}
-                                                    </Button>
-                                                </td>
-                                                <td className="px-3 py-2 text-xs">
-                                                    {u.google_linked
-                                                        ? '連携済み'
-                                                        : '未連携'}
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className={
+                                                                u.is_active
+                                                                    ? 'text-xs text-emerald-700'
+                                                                    : 'text-xs text-red-600'
+                                                            }
+                                                        >
+                                                            {u.is_active
+                                                                ? '有効'
+                                                                : '無効'}
+                                                        </span>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            disabled={self}
+                                                            onClick={() =>
+                                                                setPending({
+                                                                    kind: 'user',
+                                                                    user: u,
+                                                                    changes: {
+                                                                        is_active:
+                                                                            !u.is_active,
+                                                                    },
+                                                                    text: u.is_active
+                                                                        ? `${u.name} を無効化します。ログイン中のセッションも失効します。`
+                                                                        : `${u.name} を有効にします。`,
+                                                                })
+                                                            }
+                                                        >
+                                                            {u.is_active
+                                                                ? '無効にする'
+                                                                : '有効にする'}
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -255,168 +365,114 @@ export default function AdminAccess() {
                                 </tbody>
                             </table>
                         </div>
-                        <form
-                            className="flex flex-wrap items-end gap-2"
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                void addUser();
-                            }}
-                        >
-                            <Input
-                                aria-label="氏名"
-                                placeholder="氏名"
-                                className="w-40"
-                                value={newUser.name}
-                                maxLength={100}
-                                onChange={(e) =>
-                                    setNewUser({
-                                        ...newUser,
-                                        name: e.target.value,
-                                    })
-                                }
-                            />
-                            <Input
-                                aria-label="メールアドレス"
-                                placeholder="メールアドレス"
-                                type="email"
-                                className="w-64"
-                                value={newUser.email}
-                                onChange={(e) =>
-                                    setNewUser({
-                                        ...newUser,
-                                        email: e.target.value,
-                                    })
-                                }
-                            />
-                            <NativeSelect
-                                aria-label="新しい利用者の役割"
-                                className="w-28"
-                                value={newUser.role}
-                                onChange={(e) =>
-                                    setNewUser({
-                                        ...newUser,
-                                        role: e.target.value,
-                                    })
-                                }
-                            >
-                                {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                                    <option key={k} value={k}>
-                                        {v}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                            <Button
-                                type="submit"
-                                size="sm"
-                                disabled={
-                                    busy || !newUser.name || !newUser.email
-                                }
-                            >
-                                利用者を登録
-                            </Button>
-                        </form>
                     </section>
 
-                    <section className="space-y-2">
-                        <h2 className="font-semibold">外注の案件別権限</h2>
-                        <p className="text-xs text-muted-foreground">
-                            外注は付与された有効案件の共有タスク・共有文書・議事録だけを利用できます。変更は確認後に反映され、監査記録に残ります。取消は即時に反映されます。
-                        </p>
-                        {data.contractors.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                外注アカウントがありません。
-                            </p>
-                        ) : (
-                            <div className="overflow-x-auto rounded-md border">
-                                <table className="text-sm">
-                                    <thead className="bg-muted text-xs">
-                                        <tr>
-                                            <th className="sticky left-0 bg-muted px-3 py-2 text-left">
-                                                外注
-                                            </th>
-                                            {data.projects
-                                                .filter((p) => !p.archived)
-                                                .map((p) => (
-                                                    <th
-                                                        key={p.id}
-                                                        className="px-3 py-2 text-left whitespace-nowrap"
-                                                    >
-                                                        {p.name}
-                                                    </th>
-                                                ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {data.contractors.map((c) => (
-                                            <tr key={c.id}>
-                                                <td className="sticky left-0 bg-background px-3 py-2 whitespace-nowrap">
-                                                    {c.name}
-                                                    {!c.is_active && (
-                                                        <span className="ml-1 text-xs text-red-600">
-                                                            （無効）
-                                                        </span>
-                                                    )}
-                                                </td>
+                    {data.contractors.length > 0 && (
+                        <details className="rounded-md border p-3">
+                            <summary className="cursor-pointer text-sm font-semibold">
+                                外注が見られる案件
+                                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                    {data.contractors.length}人
+                                </span>
+                            </summary>
+                            <div className="mt-3 space-y-2">
+                                <p className="text-xs text-muted-foreground">
+                                    外注ごとに、案件を「権限なし・閲覧・編集」から選びます（変更は確認後に反映）。
+                                </p>
+                                <div className="overflow-x-auto rounded-md border">
+                                    <table className="text-sm">
+                                        <thead className="bg-muted text-xs">
+                                            <tr>
+                                                <th className="sticky left-0 bg-muted px-3 py-2 text-left">
+                                                    外注
+                                                </th>
                                                 {data.projects
                                                     .filter((p) => !p.archived)
-                                                    .map((p) => {
-                                                        const value = current(
-                                                            c.id,
-                                                            p.id,
-                                                        );
-
-                                                        return (
-                                                            <td
-                                                                key={p.id}
-                                                                className="px-3 py-2"
-                                                            >
-                                                                <NativeSelect
-                                                                    aria-label={`${c.name} の ${p.name} の権限`}
-                                                                    className="w-28"
-                                                                    value={
-                                                                        value
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        setPending(
-                                                                            {
-                                                                                kind: 'grant',
-                                                                                userId: c.id,
-                                                                                userName:
-                                                                                    c.name,
-                                                                                projectId:
-                                                                                    p.id,
-                                                                                projectName:
-                                                                                    p.name,
-                                                                                from: value,
-                                                                                to: e
-                                                                                    .target
-                                                                                    .value as Permission,
-                                                                            },
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <option value="none">
-                                                                        権限なし
-                                                                    </option>
-                                                                    <option value="view">
-                                                                        閲覧
-                                                                    </option>
-                                                                    <option value="edit">
-                                                                        編集
-                                                                    </option>
-                                                                </NativeSelect>
-                                                            </td>
-                                                        );
-                                                    })}
+                                                    .map((p) => (
+                                                        <th
+                                                            key={p.id}
+                                                            className="px-3 py-2 text-left whitespace-nowrap"
+                                                        >
+                                                            {p.name}
+                                                        </th>
+                                                    ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {data.contractors.map((c) => (
+                                                <tr key={c.id}>
+                                                    <td className="sticky left-0 bg-background px-3 py-2 whitespace-nowrap">
+                                                        {c.name}
+                                                        {!c.is_active && (
+                                                            <span className="ml-1 text-xs text-red-600">
+                                                                （無効）
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    {data.projects
+                                                        .filter(
+                                                            (p) => !p.archived,
+                                                        )
+                                                        .map((p) => {
+                                                            const value =
+                                                                current(
+                                                                    c.id,
+                                                                    p.id,
+                                                                );
+
+                                                            return (
+                                                                <td
+                                                                    key={p.id}
+                                                                    className="px-3 py-2"
+                                                                >
+                                                                    <NativeSelect
+                                                                        aria-label={`${c.name} の ${p.name} の権限`}
+                                                                        className="w-28"
+                                                                        value={
+                                                                            value
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            setPending(
+                                                                                {
+                                                                                    kind: 'grant',
+                                                                                    userId: c.id,
+                                                                                    userName:
+                                                                                        c.name,
+                                                                                    projectId:
+                                                                                        p.id,
+                                                                                    projectName:
+                                                                                        p.name,
+                                                                                    from: value,
+                                                                                    to: e
+                                                                                        .target
+                                                                                        .value as Permission,
+                                                                                },
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <option value="none">
+                                                                            権限なし
+                                                                        </option>
+                                                                        <option value="view">
+                                                                            閲覧
+                                                                        </option>
+                                                                        <option value="edit">
+                                                                            編集
+                                                                        </option>
+                                                                    </NativeSelect>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        )}
-                    </section>
+                        </details>
+                    )}
                 </>
             )}
             <ConfirmDialog
