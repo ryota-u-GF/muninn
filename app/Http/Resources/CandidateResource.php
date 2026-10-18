@@ -20,6 +20,13 @@ class CandidateResource extends JsonResource
             'warnings' => $this->warnings ?? [],
             'revision' => $this->revision,
             'task_id' => $this->task_id,
+            // 取り込み元のメール（Gmail 連携のとき）。本文は保持しない。
+            'mail' => $this->mailMessage === null ? null : [
+                'subject' => $this->mailMessage->subject,
+                'sender' => $this->mailMessage->sender,
+                'received_at' => $this->mailMessage->received_at?->toIso8601String(),
+                'url' => $this->mailMessage->gmailUrl(),
+            ],
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

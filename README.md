@@ -171,6 +171,8 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 | `POST /imports` `{json}`                                                                                                                                | 手動 JSON（候補の配列、または `{"candidates":[…]}`）                                                                          |
 | `POST /imports/extract` `{text}`                                                                                                                        | 貼り付けた文章から本人の AI で候補を作成（キー未設定は 422、1 分 10 回まで）                                                  |
 | `GET/PUT/DELETE /ai-settings`、`POST /ai-settings/test`                                                                                                 | 本人の AI 設定（API キー・モデル）。キーは返さない                                                                            |
+| `GET/PUT/DELETE /gmail`、`POST /gmail/sync`                                                                                                             | 本人の Gmail 連携の設定・解除・取得（1 回に 5 通まで。`has_more` が true の間は続けて呼ぶ）。更新トークンは返さない           |
+| `GET /auth/gmail/redirect`、`GET /auth/gmail/callback`                                                                                                  | Gmail 連携の開始・戻り（権限は `gmail.readonly` のみ）                                                                        |
 | `PATCH /imports/{id}` / `POST /imports/{id}/reject`                                                                                                     | 候補の編集・却下（却下で本文削除）                                                                                            |
 | `POST /imports/confirm` `{idempotency_key, items:[{id, expected_revision}]}`                                                                            | 選択分を原子的にタスク化（公開区分は候補ごとに共有／自分のみ）。同じキーの再送は保存済みの結果（`replayed: true`）            |
 | `GET /tv`                                                                                                                                               | TV 用。`generated_at, today, users[id,name], projects[id,name], tasks[id,title,status,project_id,due_date,assignee_ids]` のみ |
@@ -236,7 +238,7 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 ## 11. 既知の制限
 
 - Google ログイン・Google カレンダー（予定詳細／free-busy）・MCP・LLM は**未接続**（カレンダー・MCP は初版未実装、後続工程）。未接続を「空き」と扱う画面はない。
-- メールの候補は、貼り付けた文章を本人の Claude（API キーは利用者ごとに登録）で抽出するか、手動 JSON で作る。Gmail の自動取得は未実装。Drive・録音・自動解析は対象外。
+- メールの候補は、貼り付けた文章を本人の Claude（API キーは利用者ごとに登録）で抽出するか、手動 JSON で作る。Gmail は、本人が連携して「いま取得」を押すと新着メールから候補を作る（自動の定期取得は未実装）。Drive・録音・自動解析は対象外。
 - AI の API キーは `user_ai_settings` に暗号化して保存し、画面・API には返さない（末尾4文字のみ表示）。文章は保存せず、Anthropic に送信される。AI の出力は候補にするだけで、本人が承認するまでタスクにならない。
 - API トークンは発行していない（MCP 用トークンは後続工程で設計。外注・TV には発行しない方針）。
 - 文書はプレーンテキストのみ（リッチブロック・共同カーソル・コメントは対象外）。PDF・Word の取込は対象外。
@@ -251,3 +253,17 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 2. 本番インフラ・ドメイン・HTTPS・Web サーバー（php-fpm 等）・MySQL の運用、バックアップ、例外監視、ログ保存期間。
 3. 実データ移行：ステージングで dry-run → 件数・公開区分・外注権限・担当者・並び順・日時・履歴の照合 → 切替前バックアップ・書込み停止・移行・検証・切替・失敗時の戻し方を決めてから実施。既存の `role` と `access_kind` の二軸を本アプリの 4 役割へ明示的に対応づける必要がある。セッション・トークン・秘密設定は移行しない。既存に無い過去履歴は生成しない。
 4. Google カレンダー・MCP/LLM の接続方針（送信内容・課金・保存方針、refresh token の暗号化保存）。
+
+---
+
+## Gmail 連携の設定（Google Cloud）
+
+Gmail 連携は、利用者が自分の Gmail を許可して使う（権限は読み取り専用の `gmail.readonly`）。メール本文は保存せず、件名・差出人・日時・メール ID・候補だけを残す。次の準備が必要。
+
+1. Google Cloud でプロジェクトを作り、「Gmail API」を有効にする。
+2. 「OAuth 同意画面」を **内部**（Google Workspace の組織内のみ）にして、スコープに `gmail.readonly` を追加する（内部なら Google の審査は不要）。
+3. 「OAuth クライアント ID」（ウェブアプリ）を作り、承認済みのリダイレクト URI に次を登録する。
+    - 開発：`http://localhost:8080/auth/gmail/callback`
+    - 本番：`https://（本番のドメイン）/auth/gmail/callback`（本番は HTTPS 必須）
+4. `.env` に `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`（Google ログインと共通）を設定する。戻り先を変えるときだけ `GOOGLE_GMAIL_REDIRECT_URI` を設定する（既定は `APP_URL/auth/gmail/callback`）。
+5. 各利用者が、「メール」画面の「AIの設定」で自分の API キーを登録してから、「Gmailを連携する」を押す。

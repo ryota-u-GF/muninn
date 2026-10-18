@@ -29,9 +29,9 @@ class ImportService
      * @param  list<array<string, mixed>>  $items
      * @return list<ImportCandidate>
      */
-    public function createCandidates(User $owner, string $source, array $items): array
+    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null): array
     {
-        return DB::transaction(function () use ($owner, $source, $items) {
+        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId) {
             $created = [];
             foreach ($items as $item) {
                 $normalized = $this->normalizer->normalize($item, $owner);
@@ -56,6 +56,7 @@ class ImportService
                     'warnings' => $warnings,
                     'status' => CandidateStatus::Pending,
                     'fingerprint' => $fingerprint,
+                    'mail_message_id' => $mailMessageId,
                 ])->refresh();
             }
 

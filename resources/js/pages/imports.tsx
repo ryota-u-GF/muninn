@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AiSettings } from '@/components/gf/ai-settings';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
+import { GmailPanel } from '@/components/gf/gmail-panel';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -166,6 +167,8 @@ export default function Imports() {
                     <li>メールの自動取得は準備中です（未接続）。</li>
                 </ul>
             </div>
+
+            <GmailPanel aiReady={aiReady} onSynced={load} />
 
             <section className="space-y-2 rounded-md border p-3">
                 <h2 className="font-semibold">メールの文章から候補を作る</h2>
@@ -632,6 +635,25 @@ export default function Imports() {
                                                               )
                                                             : '未設定'}
                                                     </div>
+                                                    {c.mail && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            メール：
+                                                            {c.mail.subject ??
+                                                                '（件名なし）'}
+                                                            {c.mail.sender &&
+                                                                `（${c.mail.sender}）`}{' '}
+                                                            <a
+                                                                href={
+                                                                    c.mail.url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-blue-700 underline"
+                                                            >
+                                                                Gmailで開く
+                                                            </a>
+                                                        </div>
+                                                    )}
                                                     {p.description && (
                                                         <div className="text-xs">
                                                             {p.description}

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CandidateStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -15,10 +16,18 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $revision
  * @property int|null $task_id
  * @property string $fingerprint
+ * @property int|null $mail_message_id
+ * @property-read MailMessage|null $mailMessage
  */
 class ImportCandidate extends Model
 {
     protected $guarded = ['id', 'revision'];
+
+    /** @return BelongsTo<MailMessage, $this> */
+    public function mailMessage(): BelongsTo
+    {
+        return $this->belongsTo(MailMessage::class);
+    }
 
     protected function casts(): array
     {

@@ -38,6 +38,16 @@ return [
         'max_text_chars' => 20000,
     ],
 
+    // Gmail 連携（読み取り専用）
+    'gmail' => [
+        'scope' => 'https://www.googleapis.com/auth/gmail.readonly',
+        // 1 回の取得で処理するメールの最大数（AI の呼び出し回数を抑える）
+        'max_per_sync' => 5,
+        // 1 回に確認するメールの最大数（新しい順）
+        'list_size' => 100,
+        'initial_days_options' => [3, 7, 30],
+    ],
+
     'history' => [
         'global_limit' => 500,
         'entity_limit' => 200,

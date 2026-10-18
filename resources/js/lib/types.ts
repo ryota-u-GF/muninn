@@ -122,6 +122,12 @@ export type Candidate = {
     warnings: string[];
     revision: number;
     task_id: number | null;
+    mail: {
+        subject: string | null;
+        sender: string | null;
+        received_at: string | null;
+        url: string;
+    } | null;
     created_at: string | null;
 };
 

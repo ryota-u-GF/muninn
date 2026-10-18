@@ -144,7 +144,7 @@ PROMPT;
     private function parse(Message $message, Collection $projects): array
     {
         if ($message->stopReason === 'refusal' || $message->stopReason === 'max_tokens') {
-            throw new AiRequestFailedException('AIがこの文章を処理できませんでした。内容を短くして、やり直してください。');
+            throw new AiContentRejectedException('AIがこの文章を処理できませんでした。内容を短くして、やり直してください。');
         }
 
         $json = null;
@@ -168,7 +168,7 @@ PROMPT;
     {
         $data = json_decode($json, true);
         if (! is_array($data) || ! isset($data['candidates']) || ! is_array($data['candidates'])) {
-            throw new AiRequestFailedException('AIの返答を読み取れませんでした。もう一度やり直してください。');
+            throw new AiContentRejectedException('AIの返答を読み取れませんでした。もう一度やり直してください。');
         }
 
         $idsByName = $projects->mapWithKeys(fn (Project $p) => [mb_strtolower(trim($p->name)) => $p->id]);

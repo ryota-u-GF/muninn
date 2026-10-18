@@ -25,7 +25,7 @@ class ImportController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $candidates = ImportCandidate::query()
+        $candidates = ImportCandidate::query()->with('mailMessage')
             ->where('owner_id', $request->user()->id)
             ->where(fn ($q) => $q->where('status', CandidateStatus::Pending->value)
                 ->orWhere('updated_at', '>=', now()->subDays(14)))
