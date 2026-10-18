@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { ChevronDown, History, Trash2 } from 'lucide-react';
+import { ChevronDown, History, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
@@ -358,7 +358,7 @@ export function TaskDialog({
                     <DialogTitle>
                         {isNew ? 'タスクを追加' : 'タスクの詳細'}
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="sr-only">
                         {isNew
                             ? 'タイトルだけ入力すれば保存できます。担当者や期限などは後からでも変更できます。'
                             : canEdit
@@ -454,41 +454,78 @@ export function TaskDialog({
 
                     <div className="grid gap-1">
                         <span className="text-sm font-medium">
-                            担当者（複数可）
+                            担当者
                             <Optional />
                         </span>
                         {canChangeAssignees ? (
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-md border p-2">
-                                {assignable.map((m) => (
-                                    <label
-                                        key={m.id}
-                                        className="flex items-center gap-1 text-sm"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={form.assignee_ids.includes(
-                                                m.id,
-                                            )}
-                                            onChange={(e) =>
-                                                set(
-                                                    'assignee_ids',
-                                                    e.target.checked
-                                                        ? [
-                                                              ...form.assignee_ids,
-                                                              m.id,
-                                                          ].sort(
-                                                              (a, b) => a - b,
-                                                          )
-                                                        : form.assignee_ids.filter(
-                                                              (id) =>
-                                                                  id !== m.id,
-                                                          ),
-                                                )
-                                            }
-                                        />
-                                        {m.name}
-                                    </label>
-                                ))}
+                            <div className="grid gap-2">
+                                {form.assignee_ids.length > 0 && (
+                                    <ul className="flex flex-wrap gap-2">
+                                        {form.assignee_ids.map((id) => (
+                                            <li
+                                                key={id}
+                                                className="flex items-center gap-1 rounded-full bg-secondary py-1 pr-1 pl-3 text-sm"
+                                            >
+                                                {members.find(
+                                                    (m) => m.id === id,
+                                                )?.name ?? '—'}
+                                                <button
+                                                    type="button"
+                                                    aria-label={`${
+                                                        members.find(
+                                                            (m) => m.id === id,
+                                                        )?.name ?? '担当者'
+                                                    }を外す`}
+                                                    className="rounded-full p-1 hover:bg-black/10"
+                                                    onClick={() =>
+                                                        set(
+                                                            'assignee_ids',
+                                                            form.assignee_ids.filter(
+                                                                (a) => a !== id,
+                                                            ),
+                                                        )
+                                                    }
+                                                >
+                                                    <X className="size-3" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                <NativeSelect
+                                    id="task-assignee"
+                                    aria-label="担当者を選ぶ"
+                                    value=""
+                                    onChange={(e) => {
+                                        const id = Number(e.target.value);
+                                        if (id) {
+                                            set(
+                                                'assignee_ids',
+                                                [...form.assignee_ids, id].sort(
+                                                    (a, b) => a - b,
+                                                ),
+                                            );
+                                        }
+                                    }}
+                                >
+                                    <option value="">
+                                        {form.assignee_ids.length === 0
+                                            ? '担当者を選ぶ（未選択なら未割当）'
+                                            : '担当者を追加する'}
+                                    </option>
+                                    {assignable
+                                        .filter(
+                                            (m) =>
+                                                !form.assignee_ids.includes(
+                                                    m.id,
+                                                ),
+                                        )
+                                        .map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.name}
+                                            </option>
+                                        ))}
+                                </NativeSelect>
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">
@@ -505,31 +542,20 @@ export function TaskDialog({
                                 （外注は担当者を変更できません）
                             </p>
                         )}
-                        {canChangeAssignees && (
-                            <Hint>
-                                チェックした人のタスクになります。選ばない場合は「未割当」になります。
-                                {isAdmin ? (
-                                    <>
-                                        一覧にいない人は、
-                                        <a
-                                            href="/admin/access"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-blue-700 underline"
-                                        >
-                                            「権限・利用者」で登録
-                                        </a>
-                                        してください（別のタブで開きます。登録後にこの画面へ戻ると一覧が更新されます）。
-                                    </>
-                                ) : (
-                                    '一覧にいない人は、管理者に利用者の登録を依頼してください。'
-                                )}
-                            </Hint>
+                        {canChangeAssignees && isAdmin && (
+                            <a
+                                href="/admin/access"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-fit text-xs text-blue-700 underline"
+                            >
+                                一覧にいない人を登録する
+                            </a>
                         )}
                         {fieldError('assignee_ids')}
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid items-start gap-4 sm:grid-cols-2">
                         <div className="grid gap-1">
                             <Label htmlFor="task-due">
                                 期限
@@ -544,9 +570,6 @@ export function TaskDialog({
                                     set('due_date', e.target.value)
                                 }
                             />
-                            <Hint>
-                                終わらせたい日。過ぎると赤く表示されます。
-                            </Hint>
                             {fieldError('due_date')}
                         </div>
                         <div className="grid gap-1">
@@ -578,11 +601,6 @@ export function TaskDialog({
                                     </option>
                                 ))}
                             </NativeSelect>
-                            <Hint>
-                                {internal
-                                    ? 'どの案件のタスクか。案件に関係ない作業は「会社共通」のままにします。'
-                                    : '案件が選択肢に無い場合は、社内の担当者に案件の登録を依頼してください。'}
-                            </Hint>
                             {internal && canChangeProject && (
                                 <div className="grid gap-1">
                                     {addingProject ? (
@@ -695,7 +713,7 @@ export function TaskDialog({
                                 />
                                 {fieldError('description')}
                             </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid items-start gap-4 sm:grid-cols-2">
                                 <div className="grid gap-1">
                                     <Label htmlFor="task-status">状態</Label>
                                     <NativeSelect
@@ -716,9 +734,6 @@ export function TaskDialog({
                                             </option>
                                         ))}
                                     </NativeSelect>
-                                    <Hint>
-                                        新しく作るときは「未着手」のままで構いません。
-                                    </Hint>
                                 </div>
                                 <div className="grid gap-1">
                                     <Label htmlFor="task-start">
@@ -733,9 +748,6 @@ export function TaskDialog({
                                             set('start_date', e.target.value)
                                         }
                                     />
-                                    <Hint>
-                                        スケジュール画面の棒の開始位置になります。
-                                    </Hint>
                                     {fieldError('start_date')}
                                 </div>
                             </div>
@@ -772,9 +784,6 @@ export function TaskDialog({
                                             非公開（自分だけ）
                                         </option>
                                     </NativeSelect>
-                                    <Hint>
-                                        「共有」は他の人にも見えます。「非公開」は自分だけに表示されます。
-                                    </Hint>
                                     {!canChangeVisibility && !isNew && (
                                         <Hint>
                                             公開区分は作成者だけが変更できます。
@@ -783,7 +792,7 @@ export function TaskDialog({
                                 </div>
                             )}
                             {internal && (
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid items-start gap-4 sm:grid-cols-2">
                                     <div className="grid gap-1">
                                         <Label htmlFor="task-source-type">
                                             情報源の種類
@@ -816,9 +825,6 @@ export function TaskDialog({
                                                 その他
                                             </option>
                                         </NativeSelect>
-                                        <Hint>
-                                            このタスクの元になった情報（任意）。
-                                        </Hint>
                                     </div>
                                     <div className="grid gap-1">
                                         <Label htmlFor="task-source-url">
