@@ -224,7 +224,7 @@ export default function Board() {
                                 aria-pressed={view === v}
                                 onClick={() => changeView(v)}
                                 className={cn(
-                                    'rounded px-3 py-1 text-sm',
+                                    'rounded px-3 py-1 text-sm transition-colors duration-200 motion-reduce:transition-none',
                                     view === v
                                         ? 'bg-primary text-primary-foreground'
                                         : 'text-muted-foreground hover:bg-muted',
@@ -387,16 +387,21 @@ export default function Board() {
                                                 );
                                             }}
                                             className={cn(
-                                                'flex min-h-24 flex-col gap-2 rounded-lg bg-muted/50 p-2',
+                                                'flex min-h-24 flex-col gap-2 rounded-lg bg-muted/50 p-2 transition-[box-shadow,background-color] duration-200 motion-reduce:transition-none',
                                                 dropTarget === key &&
-                                                    'ring-2 ring-blue-400',
+                                                    'bg-muted ring-2 ring-ring',
                                             )}
                                         >
                                             <div className="flex items-center justify-between px-1 text-xs font-semibold text-muted-foreground">
                                                 <span>
                                                     {STATUS_LABELS[status]}
                                                 </span>
-                                                <span>{items.length}</span>
+                                                <span
+                                                    key={items.length}
+                                                    className="gf-pop"
+                                                >
+                                                    {items.length}
+                                                </span>
                                             </div>
                                             {items.map((t) => (
                                                 <TaskCard

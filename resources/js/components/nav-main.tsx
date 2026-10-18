@@ -53,6 +53,7 @@ function NavItems({ items }: { items: NavItem[] }) {
                         asChild
                         isActive={isCurrentUrl(item.href)}
                         tooltip={{ children: item.title }}
+                        className="transition-[width,height,padding,box-shadow,background-color] duration-200 data-[active=true]:shadow-[inset_3px_0_0_var(--sidebar-primary)] motion-reduce:transition-none [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 motion-reduce:[&>svg]:transition-none motion-reduce:hover:[&>svg]:scale-100"
                     >
                         <Link href={item.href}>
                             {item.icon && <item.icon />}

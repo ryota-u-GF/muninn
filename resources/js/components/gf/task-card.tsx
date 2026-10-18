@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { DueLabel, MemberChips, PrivateBadge } from '@/components/gf/badges';
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -33,9 +34,9 @@ export function TaskCard({
             onDragEnd={onDragEnd}
             onClick={() => onOpen(task)}
             className={cn(
-                'gf-rise w-full rounded-md border bg-card p-2 text-left text-sm shadow-xs transition hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                'gf-rise w-full rounded-md border bg-card p-2 text-left text-sm shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                 draggable && 'cursor-grab active:cursor-grabbing',
-                dragging && 'opacity-40',
+                dragging && 'scale-[0.97] opacity-40',
                 task.status === 'done' && 'opacity-70',
             )}
         >
@@ -48,6 +49,12 @@ export function TaskCard({
                 >
                     {task.title}
                 </span>
+                {task.status === 'done' && (
+                    <Check
+                        aria-hidden="true"
+                        className="gf-pop mt-0.5 size-4 shrink-0 text-primary"
+                    />
+                )}
                 {task.visibility === 'private' && <PrivateBadge />}
             </div>
             {projectLabel && (

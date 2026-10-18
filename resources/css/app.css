@@ -178,9 +178,30 @@
     animation-delay: 200ms;
 }
 
+/* 件数やチェックが変わったときの、ぽんっと弾む動き */
+@keyframes gf-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.25);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.gf-pop {
+    display: inline-block;
+    animation: gf-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .gf-page-enter,
-    .gf-rise {
+    .gf-rise,
+    .gf-pop {
         animation: none;
     }
 }
