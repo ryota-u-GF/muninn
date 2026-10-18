@@ -33,7 +33,7 @@ export function TaskCard({
             onDragEnd={onDragEnd}
             onClick={() => onOpen(task)}
             className={cn(
-                'w-full rounded-md border bg-card p-2 text-left text-sm shadow-xs transition hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                'gf-rise w-full rounded-md border bg-card p-2 text-left text-sm shadow-xs transition hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                 draggable && 'cursor-grab active:cursor-grabbing',
                 dragging && 'opacity-40',
                 task.status === 'done' && 'opacity-70',

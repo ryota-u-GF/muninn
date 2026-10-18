@@ -16,7 +16,10 @@ export function Page({
 }) {
     return (
         <div
-            className={cn('flex min-w-0 flex-1 flex-col gap-4 p-4', className)}
+            className={cn(
+                'gf-page-enter flex min-w-0 flex-1 flex-col gap-4 p-4',
+                className,
+            )}
         >
             <Head title={title} />
             <div className="flex flex-wrap items-center justify-between gap-3">
