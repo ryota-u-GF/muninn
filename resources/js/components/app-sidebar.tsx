@@ -44,15 +44,18 @@ export function AppSidebar() {
         { title: '議事録', href: '/minutes', icon: NotebookPen },
         { title: '変更履歴', href: '/history', icon: History },
     ];
-    const manage: NavItem[] = [];
+    // メールは社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
     if (internal) {
-        manage.push({ title: '案件', href: '/projects', icon: FolderKanban });
-        manage.push({
+        docs.unshift({
             title: 'メール',
             href: '/imports',
             icon: Sparkles,
             badge: pendingMail,
         });
+    }
+    const manage: NavItem[] = [];
+    if (internal) {
+        manage.push({ title: '案件', href: '/projects', icon: FolderKanban });
         manage.push({ title: 'TV表示', href: '/tv', icon: Tv });
     }
     if (role === 'admin') {
