@@ -11,7 +11,7 @@ import {
     Tv,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavMain } from '@/components/nav-main';
+import { NavMain, NavSingle } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { usePendingMailCount } from '@/hooks/use-pending-mail-count';
 import {
@@ -52,7 +52,6 @@ export function AppSidebar() {
     const manage: NavItem[] = [];
     if (internal) {
         manage.push({ title: '案件', href: '/projects', icon: FolderKanban });
-        manage.push({ title: 'TV表示', href: '/tv', icon: Tv });
     }
     if (role === 'admin') {
         manage.push({
@@ -80,6 +79,12 @@ export function AppSidebar() {
                 <NavMain label="タスク" items={tasks} />
                 <NavMain label="記録" items={docs} />
                 {manage.length > 0 && <NavMain label="管理" items={manage} />}
+                {/* TV表示は、グループに入れず単体で置く */}
+                {internal && (
+                    <NavSingle
+                        items={[{ title: 'TV表示', href: '/tv', icon: Tv }]}
+                    />
+                )}
             </SidebarContent>
 
             <SidebarFooter>

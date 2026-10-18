@@ -41,8 +41,48 @@ function writeClosed(label: string, closed: boolean) {
     }
 }
 
-export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
+/** 項目の一覧（グループ見出しなしで、そのまま使える） */
+function NavItems({ items }: { items: NavItem[] }) {
     const { isCurrentUrl } = useCurrentUrl();
+
+    return (
+        <SidebarMenu>
+            {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                        asChild
+                        isActive={isCurrentUrl(item.href)}
+                        tooltip={{ children: item.title }}
+                    >
+                        <Link href={item.href}>
+                            {item.icon && <item.icon />}
+                            <span>{item.title}</span>
+                        </Link>
+                    </SidebarMenuButton>
+                    {item.badge ? (
+                        <SidebarMenuBadge
+                            aria-label={`${item.title}の未確認 ${item.badge}件`}
+                            data-testid="nav-badge"
+                        >
+                            {item.badge > 99 ? '99+' : item.badge}
+                        </SidebarMenuBadge>
+                    ) : null}
+                </SidebarMenuItem>
+            ))}
+        </SidebarMenu>
+    );
+}
+
+/** グループに入れず、単体で置く項目（見出し・開閉なし） */
+export function NavSingle({ items }: { items: NavItem[] }) {
+    return (
+        <SidebarGroup className="px-2 py-0">
+            <NavItems items={items} />
+        </SidebarGroup>
+    );
+}
+
+export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
     const { state } = useSidebar();
     const [open, setOpen] = useState(() => !readClosed(label));
 
@@ -73,30 +113,7 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                     </CollapsibleTrigger>
                 </SidebarGroupLabel>
                 <CollapsibleContent>
-                    <SidebarMenu>
-                        {items.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                                <SidebarMenuButton
-                                    asChild
-                                    isActive={isCurrentUrl(item.href)}
-                                    tooltip={{ children: item.title }}
-                                >
-                                    <Link href={item.href}>
-                                        {item.icon && <item.icon />}
-                                        <span>{item.title}</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                                {item.badge ? (
-                                    <SidebarMenuBadge
-                                        aria-label={`${item.title}の未確認 ${item.badge}件`}
-                                        data-testid="nav-badge"
-                                    >
-                                        {item.badge > 99 ? '99+' : item.badge}
-                                    </SidebarMenuBadge>
-                                ) : null}
-                            </SidebarMenuItem>
-                        ))}
-                    </SidebarMenu>
+                    <NavItems items={items} />
                 </CollapsibleContent>
             </Collapsible>
         </SidebarGroup>
