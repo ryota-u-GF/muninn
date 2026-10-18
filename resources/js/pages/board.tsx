@@ -155,7 +155,7 @@ export default function Board() {
                         <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
                         <Input
                             aria-label="タスクを検索"
-                            placeholder="タイトル・説明を検索"
+                            placeholder="キーワードで探す"
                             className="w-56 pl-8"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
