@@ -5,7 +5,7 @@ export const USERS = {
     admin: '山田 太郎（社長）',
     sales: '佐藤 花子（営業）',
     engineer: '鈴木 一郎（エンジニア）',
-    c1: '外注 高橋',
+    c1: '外注 佐藤',
 } as const;
 
 export async function login(page: Page, who: keyof typeof USERS) {
