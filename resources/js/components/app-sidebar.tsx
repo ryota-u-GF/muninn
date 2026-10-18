@@ -4,8 +4,9 @@ import {
     FolderKanban,
     History,
     KanbanSquare,
+    Mail,
+    NotebookPen,
     ShieldCheck,
-    Sparkles,
     Sun,
     Tv,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ export function AppSidebar() {
         { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
     ];
     const docs: NavItem[] = [
+        { title: '議事録', href: '/minutes', icon: NotebookPen },
         { title: '変更履歴', href: '/history', icon: History },
     ];
     // メールは社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
@@ -43,7 +45,7 @@ export function AppSidebar() {
         docs.unshift({
             title: 'メール',
             href: '/imports',
-            icon: Sparkles,
+            icon: Mail,
             badge: pendingMail,
         });
     }
