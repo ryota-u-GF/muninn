@@ -60,7 +60,7 @@ export function AppSidebar() {
     }
     if (role === 'admin') {
         manage.push({
-            title: '権限・利用者',
+            title: '担当者・権限',
             href: '/admin/access',
             icon: ShieldCheck,
         });

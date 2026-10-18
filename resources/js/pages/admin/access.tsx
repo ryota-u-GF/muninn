@@ -154,115 +154,14 @@ export default function AdminAccess() {
     };
 
     return (
-        <Page title="権限・利用者（管理者）">
+        <Page title="担当者・権限（管理者）">
             <ErrorBanner message={error} onRetry={() => void load()} />
             {!data ? (
                 <Loading />
             ) : (
                 <>
                     <section className="space-y-2">
-                        <h2 className="font-semibold">外注の案件別権限</h2>
-                        <p className="text-xs text-muted-foreground">
-                            外注は付与された有効案件の共有タスク・共有文書・議事録だけを利用できます。変更は確認後に反映され、監査記録に残ります。取消は即時に反映されます。
-                        </p>
-                        {data.contractors.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                外注アカウントがありません。
-                            </p>
-                        ) : (
-                            <div className="overflow-x-auto rounded-md border">
-                                <table className="text-sm">
-                                    <thead className="bg-muted text-xs">
-                                        <tr>
-                                            <th className="sticky left-0 bg-muted px-3 py-2 text-left">
-                                                外注
-                                            </th>
-                                            {data.projects
-                                                .filter((p) => !p.archived)
-                                                .map((p) => (
-                                                    <th
-                                                        key={p.id}
-                                                        className="px-3 py-2 text-left whitespace-nowrap"
-                                                    >
-                                                        {p.name}
-                                                    </th>
-                                                ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {data.contractors.map((c) => (
-                                            <tr key={c.id}>
-                                                <td className="sticky left-0 bg-background px-3 py-2 whitespace-nowrap">
-                                                    {c.name}
-                                                    {!c.is_active && (
-                                                        <span className="ml-1 text-xs text-red-600">
-                                                            （無効）
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                {data.projects
-                                                    .filter((p) => !p.archived)
-                                                    .map((p) => {
-                                                        const value = current(
-                                                            c.id,
-                                                            p.id,
-                                                        );
-
-                                                        return (
-                                                            <td
-                                                                key={p.id}
-                                                                className="px-3 py-2"
-                                                            >
-                                                                <NativeSelect
-                                                                    aria-label={`${c.name} の ${p.name} の権限`}
-                                                                    className="w-28"
-                                                                    value={
-                                                                        value
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        setPending(
-                                                                            {
-                                                                                kind: 'grant',
-                                                                                userId: c.id,
-                                                                                userName:
-                                                                                    c.name,
-                                                                                projectId:
-                                                                                    p.id,
-                                                                                projectName:
-                                                                                    p.name,
-                                                                                from: value,
-                                                                                to: e
-                                                                                    .target
-                                                                                    .value as Permission,
-                                                                            },
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <option value="none">
-                                                                        権限なし
-                                                                    </option>
-                                                                    <option value="view">
-                                                                        閲覧
-                                                                    </option>
-                                                                    <option value="edit">
-                                                                        編集
-                                                                    </option>
-                                                                </NativeSelect>
-                                                            </td>
-                                                        );
-                                                    })}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </section>
-
-                    <section className="space-y-2">
-                        <h2 className="font-semibold">利用者</h2>
+                        <h2 className="font-semibold">担当者（利用者）</h2>
                         <p className="text-xs text-muted-foreground">
                             未登録の Google
                             アカウントは自動登録されません（許可ドメイン設定時のみ「社員」として作成）。役割の変更・無効化はその利用者の既存セッションを即時に失効させます。
@@ -416,6 +315,107 @@ export default function AdminAccess() {
                                 利用者を登録
                             </Button>
                         </form>
+                    </section>
+
+                    <section className="space-y-2">
+                        <h2 className="font-semibold">外注の案件別権限</h2>
+                        <p className="text-xs text-muted-foreground">
+                            外注は付与された有効案件の共有タスク・共有文書・議事録だけを利用できます。変更は確認後に反映され、監査記録に残ります。取消は即時に反映されます。
+                        </p>
+                        {data.contractors.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                外注アカウントがありません。
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto rounded-md border">
+                                <table className="text-sm">
+                                    <thead className="bg-muted text-xs">
+                                        <tr>
+                                            <th className="sticky left-0 bg-muted px-3 py-2 text-left">
+                                                外注
+                                            </th>
+                                            {data.projects
+                                                .filter((p) => !p.archived)
+                                                .map((p) => (
+                                                    <th
+                                                        key={p.id}
+                                                        className="px-3 py-2 text-left whitespace-nowrap"
+                                                    >
+                                                        {p.name}
+                                                    </th>
+                                                ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {data.contractors.map((c) => (
+                                            <tr key={c.id}>
+                                                <td className="sticky left-0 bg-background px-3 py-2 whitespace-nowrap">
+                                                    {c.name}
+                                                    {!c.is_active && (
+                                                        <span className="ml-1 text-xs text-red-600">
+                                                            （無効）
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                {data.projects
+                                                    .filter((p) => !p.archived)
+                                                    .map((p) => {
+                                                        const value = current(
+                                                            c.id,
+                                                            p.id,
+                                                        );
+
+                                                        return (
+                                                            <td
+                                                                key={p.id}
+                                                                className="px-3 py-2"
+                                                            >
+                                                                <NativeSelect
+                                                                    aria-label={`${c.name} の ${p.name} の権限`}
+                                                                    className="w-28"
+                                                                    value={
+                                                                        value
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        setPending(
+                                                                            {
+                                                                                kind: 'grant',
+                                                                                userId: c.id,
+                                                                                userName:
+                                                                                    c.name,
+                                                                                projectId:
+                                                                                    p.id,
+                                                                                projectName:
+                                                                                    p.name,
+                                                                                from: value,
+                                                                                to: e
+                                                                                    .target
+                                                                                    .value as Permission,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <option value="none">
+                                                                        権限なし
+                                                                    </option>
+                                                                    <option value="view">
+                                                                        閲覧
+                                                                    </option>
+                                                                    <option value="edit">
+                                                                        編集
+                                                                    </option>
+                                                                </NativeSelect>
+                                                            </td>
+                                                        );
+                                                    })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </section>
                 </>
             )}

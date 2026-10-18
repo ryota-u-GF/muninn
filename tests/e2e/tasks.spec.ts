@@ -65,7 +65,7 @@ test('外注（プロジェクト1編集）：プロジェクト1だけ表示、
     await expect(
         page.getByRole('region', { name: '会社共通（案件なし）' }),
     ).toHaveCount(0);
-    await expect(page.getByRole('link', { name: '権限・利用者' })).toHaveCount(
+    await expect(page.getByRole('link', { name: '担当者・権限' })).toHaveCount(
         0,
     );
 
