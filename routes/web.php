@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\GmailController;
 use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\ImportController;
+use App\Http\Controllers\Api\MeetController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\ProjectAccessController;
 use App\Http\Controllers\Api\ProjectController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\GmailController as GmailOAuthController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\MeetController as MeetOAuthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +46,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:use-imports')->group(function () {
         Route::get('auth/gmail/redirect', [GmailOAuthController::class, 'redirect'])->name('gmail.redirect');
         Route::get('auth/gmail/callback', [GmailOAuthController::class, 'callback'])->name('gmail.callback');
+        Route::get('auth/meet/redirect', [MeetOAuthController::class, 'redirect'])->name('meet.redirect');
+        Route::get('auth/meet/callback', [MeetOAuthController::class, 'callback'])->name('meet.callback');
     });
     Route::inertia('admin/access', 'admin/access')->middleware('can:admin')->name('admin.access');
     Route::inertia('tv', 'tv')->middleware('can:view-tv')->name('tv.page');
@@ -93,6 +97,13 @@ Route::middleware('auth')->group(function () {
             Route::put('/', [GmailController::class, 'update']);
             Route::delete('/', [GmailController::class, 'destroy']);
             Route::post('sync', [GmailController::class, 'sync'])->middleware('throttle:gmail-sync');
+        });
+
+        Route::middleware('can:use-imports')->prefix('meet')->group(function () {
+            Route::get('/', [MeetController::class, 'show']);
+            Route::put('/', [MeetController::class, 'update']);
+            Route::delete('/', [MeetController::class, 'destroy']);
+            Route::post('sync', [MeetController::class, 'sync'])->middleware('throttle:meet-sync');
         });
 
         Route::middleware('can:use-imports')->prefix('ai-settings')->group(function () {

@@ -51,6 +51,19 @@ return [
         'default_sync_interval' => 10,
     ],
 
+    // Meet のメモの連携（カレンダーの予定に付いたドキュメントを読む。読み取り専用）
+    'meet' => [
+        'scopes' => [
+            'https://www.googleapis.com/auth/calendar.events.readonly',
+            'https://www.googleapis.com/auth/documents.readonly',
+        ],
+        // 1 回の取得で処理するメモの最大数（AI の呼び出し回数を抑える）
+        'max_per_sync' => 3,
+        // 1 回に確認する予定の最大数
+        'list_size' => 100,
+        'default_keywords' => 'Gemini,メモ,議事録,Notes',
+    ],
+
     'history' => [
         'global_limit' => 500,
         'entity_limit' => 200,

@@ -25,7 +25,8 @@ class CandidateResource extends JsonResource
                 'subject' => $this->mailMessage->subject,
                 'sender' => $this->mailMessage->sender,
                 'received_at' => $this->mailMessage->received_at?->toIso8601String(),
-                'url' => $this->mailMessage->gmailUrl(),
+                'kind' => $this->mailMessage->kind,
+                'url' => $this->mailMessage->openUrl(),
             ],
             'created_at' => $this->created_at?->toIso8601String(),
         ];

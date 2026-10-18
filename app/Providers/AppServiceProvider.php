@@ -54,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('ai', fn (Request $request) => Limit::perMinute(10)->by((string) ($request->user()->id ?? $request->ip())));
         // Gmail の取得（1 回の呼び出しで AI を複数回使うため、利用者ごとに 1 分 12 回まで）
         RateLimiter::for('gmail-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
+        // Meet のメモの取得（Gmail と同じく、利用者ごとに 1 分 12 回まで）
+        RateLimiter::for('meet-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()->id ?? $request->ip())));
     }

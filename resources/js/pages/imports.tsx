@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AiSettings } from '@/components/gf/ai-settings';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { GmailPanel } from '@/components/gf/gmail-panel';
+import { MeetPanel } from '@/components/gf/meet-panel';
 import { PENDING_COUNT_EVENT } from '@/hooks/use-auto-gmail-sync';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const SOURCE_LABELS: Record<string, string> = {
     ai_text: 'メールの文章から作成',
     ai_minutes: '議事録から作成',
     gmail: 'Gmail',
+    meet: 'Meetのメモ',
 };
 
 const VISIBILITY_LABELS: Record<Visibility, string> = {
@@ -168,6 +170,8 @@ export default function Imports() {
             </p>
 
             <GmailPanel aiReady={aiReady} onSynced={load} />
+
+            <MeetPanel aiReady={aiReady} onSynced={load} />
 
             <ErrorBanner
                 message={error ?? ref.error}
@@ -547,7 +551,10 @@ export default function Imports() {
                                                     </div>
                                                     {c.mail && (
                                                         <div className="text-xs text-muted-foreground">
-                                                            メール：
+                                                            {c.mail.kind ===
+                                                            'minutes'
+                                                                ? '議事録：'
+                                                                : 'メール：'}
                                                             {c.mail.subject ??
                                                                 '（件名なし）'}
                                                             {c.mail.sender &&
@@ -560,7 +567,10 @@ export default function Imports() {
                                                                 rel="noreferrer"
                                                                 className="text-blue-700 underline"
                                                             >
-                                                                Gmailで開く
+                                                                {c.mail.kind ===
+                                                                'minutes'
+                                                                    ? 'メモを開く'
+                                                                    : 'Gmailで開く'}
                                                             </a>
                                                         </div>
                                                     )}

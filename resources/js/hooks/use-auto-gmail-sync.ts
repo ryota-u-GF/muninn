@@ -23,6 +23,27 @@ let lastRun = 0;
 let running = false;
 let lastToast = '';
 
+/** 1 つの取り込み元（Gmail／Meet のメモ）を、残りがなくなるまで続けて呼ぶ。 */
+async function syncSource(
+    url: string,
+): Promise<{ ran: boolean; created: number }> {
+    let created = 0;
+    let ran = false;
+    for (let i = 0; i < 20; i++) {
+        const res = await api<SyncResponse>('POST', url, { auto: true });
+        if (res.data.status !== 'done') {
+            break;
+        }
+        ran = true;
+        created += res.data.candidates;
+        if (!res.data.has_more) {
+            break;
+        }
+    }
+
+    return { ran, created };
+}
+
 async function tick(force = false) {
     if (document.visibilityState !== 'visible' || running) {
         return;
@@ -34,45 +55,49 @@ async function tick(force = false) {
     running = true;
     lastRun = Date.now();
 
-    try {
-        let created = 0;
-        let ran = false;
-        // 1 回に少数ずつ処理するので、残りがなくなるまで続けて呼ぶ
-        for (let i = 0; i < 20; i++) {
-            const res = await api<SyncResponse>('POST', '/api/gmail/sync', {
-                auto: true,
-            });
-            if (res.data.status !== 'done') {
-                break;
-            }
-            ran = true;
-            created += res.data.candidates;
-            if (!res.data.has_more) {
-                break;
+    let created = 0;
+    let ran = false;
+    let failed = false;
+    // 片方が失敗しても、もう片方は取り込む
+    for (const [url, name] of [
+        ['/api/gmail/sync', 'メール'],
+        ['/api/meet/sync', 'Meetのメモ'],
+    ]) {
+        try {
+            const result = await syncSource(url);
+            ran ||= result.ran;
+            created += result.created;
+        } catch (e) {
+            // 自動取得の失敗で作業を止めない。同じ内容の通知は繰り返さない。原因は「メール」画面にも表示される。
+            failed = true;
+            const ignored = [401, 403, 419];
+            if (e instanceof ApiError && !ignored.includes(e.status)) {
+                const message = `${name}の自動取得に失敗しました：${e.firstError()}`;
+                if (message !== lastToast) {
+                    lastToast = message;
+                    toast.error(message);
+                }
             }
         }
+    }
+    if (!failed) {
         lastToast = '';
+    }
 
+    try {
         if (ran) {
             window.dispatchEvent(new Event(MAIL_SYNCED_EVENT));
         }
         if (created > 0) {
-            toast.success(`メールから${created}件のタスク候補を作成しました`, {
-                action: {
-                    label: '確認する',
-                    onClick: () => router.visit('/imports'),
+            toast.success(
+                `メール・議事録から${created}件のタスク候補を作成しました`,
+                {
+                    action: {
+                        label: '確認する',
+                        onClick: () => router.visit('/imports'),
+                    },
                 },
-            });
-        }
-    } catch (e) {
-        // 自動取得の失敗で作業を止めない。同じ内容の通知は繰り返さない。原因は「メール」画面にも表示される。
-        const ignored = [401, 403, 419];
-        if (e instanceof ApiError && !ignored.includes(e.status)) {
-            const message = `メールの自動取得に失敗しました：${e.firstError()}`;
-            if (message !== lastToast) {
-                lastToast = message;
-                toast.error(message);
-            }
+            );
         }
     } finally {
         running = false;
@@ -80,7 +105,7 @@ async function tick(force = false) {
 }
 
 /**
- * アプリを開いている間、社内メンバーの Gmail から新着メールを定期的に取り込み、候補にする。
+ * アプリを開いている間、社内メンバーの Gmail の新着メールと Meet のメモを定期的に取り込み、候補にする。
  * 開いたとき・タブに戻ったとき・1 分ごとに確認し、設定した間隔（既定 10 分）が過ぎていれば取得する。
  * 連携・AI のキー・自動取得の設定が揃っているときだけ動く。承認するまでタスクにはならない。
  */

@@ -123,6 +123,7 @@ export type Candidate = {
     revision: number;
     task_id: number | null;
     mail: {
+        kind: 'mail' | 'minutes';
         subject: string | null;
         sender: string | null;
         received_at: string | null;

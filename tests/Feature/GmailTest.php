@@ -152,7 +152,7 @@ class GmailTest extends TestCase
     {
         $this->fakeGoogle([]);
         $connection = $this->connect($this->employee);
-        MailMessage::query()->create(['owner_id' => $this->employee->id, 'gmail_message_id' => 'm1']);
+        MailMessage::query()->create(['owner_id' => $this->employee->id, 'external_id' => 'm1']);
 
         $this->loginAs($this->employee)->deleteJson('/api/gmail')->assertOk()->assertJsonPath('data.connected', false);
 
@@ -205,7 +205,7 @@ class GmailTest extends TestCase
         $res = $this->loginAs($this->employee)->postJson('/api/gmail/sync')->assertOk();
         $this->assertSame(2, $res->json('data.processed'));
         $this->assertSame(1, $res->json('data.skipped'));
-        $this->assertSame('skipped', MailMessage::query()->where('gmail_message_id', 'bad')->firstOrFail()->status);
+        $this->assertSame('skipped', MailMessage::query()->where('external_id', 'bad')->firstOrFail()->status);
 
         // 次回は、スキップしたメールを再処理しない
         $again = $this->postJson('/api/gmail/sync')->assertOk();

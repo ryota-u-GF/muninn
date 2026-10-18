@@ -45,8 +45,8 @@ class GmailSyncer
             $token = $this->gmail->accessToken($connection);
             $ids = $this->gmail->listMessageIds($token, $this->query($connection), (int) config('gf.gmail.list_size'));
 
-            $known = MailMessage::query()->where('owner_id', $user->id)->whereIn('gmail_message_id', $ids)
-                ->pluck('gmail_message_id')->all();
+            $known = MailMessage::query()->where('owner_id', $user->id)->where('kind', 'mail')->whereIn('external_id', $ids)
+                ->pluck('external_id')->all();
             $todo = array_values(array_diff($ids, $known));
             $batch = array_slice($todo, 0, (int) config('gf.gmail.max_per_sync'));
 
@@ -91,7 +91,8 @@ class GmailSyncer
         DB::transaction(function () use ($user, $connection, $mail, $items, $status) {
             $record = MailMessage::query()->create([
                 'owner_id' => $user->id,
-                'gmail_message_id' => $mail['id'],
+                'kind' => 'mail',
+                'external_id' => $mail['id'],
                 'account_email' => $connection->google_email,
                 'subject' => $mail['subject'] !== '' ? $mail['subject'] : null,
                 'sender' => $mail['sender'] !== '' ? $mail['sender'] : null,

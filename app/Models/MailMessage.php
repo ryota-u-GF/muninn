@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int $owner_id
- * @property string $gmail_message_id
+ * @property string $kind mail（Gmail）／minutes（Meet のメモ）
+ * @property string $external_id Gmail のメール ID、または Google ドキュメントの ID
  * @property string|null $account_email
  * @property string|null $subject
  * @property string|null $sender
@@ -27,11 +28,15 @@ class MailMessage extends Model
         return ['received_at' => 'immutable_datetime', 'candidate_count' => 'integer'];
     }
 
-    /** Gmail でこのメールを開くリンク */
-    public function gmailUrl(): string
+    /** 取り込み元（Gmail のメール、または Meet のメモのドキュメント）を開くリンク */
+    public function openUrl(): string
     {
         $account = $this->account_email ? rawurlencode($this->account_email) : '0';
 
-        return "https://mail.google.com/mail/?authuser={$account}#all/{$this->gmail_message_id}";
+        if ($this->kind === 'minutes') {
+            return 'https://docs.google.com/document/d/'.rawurlencode($this->external_id)."/edit?authuser={$account}";
+        }
+
+        return "https://mail.google.com/mail/?authuser={$account}#all/{$this->external_id}";
     }
 }
