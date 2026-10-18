@@ -161,111 +161,11 @@ export default function Imports() {
 
     return (
         <Page title="メール">
-            <div className="rounded-md border border-sky-300 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
-                <p className="font-semibold">
-                    メールから見つけたタスクの候補を、確認して登録します
-                </p>
-                <ul className="mt-1 list-disc pl-5 text-xs">
-                    <li>
-                        候補はあなただけが見られます（管理者を含む他の人には表示されません）。
-                    </li>
-                    <li>
-                        確認して承認したものだけがタスクになります。案件と公開区分（共有／自分のみ）を選べます。
-                    </li>
-                    <li>メールの自動取得は準備中です（未接続）。</li>
-                </ul>
-            </div>
+            <p className="text-sm text-muted-foreground">
+                メールから見つけたタスクの候補を、確認して登録します。候補は自分だけが見られ、承認したものだけがタスクになります。
+            </p>
 
             <GmailPanel aiReady={aiReady} onSynced={load} />
-
-            <section className="space-y-2 rounded-md border p-3">
-                <h2 className="font-semibold">メールの文章から候補を作る</h2>
-                <Textarea
-                    aria-label="メールの文章"
-                    rows={8}
-                    value={text}
-                    maxLength={20000}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="メールの本文を貼り付けてください"
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                        size="sm"
-                        disabled={busy || text.trim() === '' || !aiReady}
-                        onClick={() =>
-                            run(async () => {
-                                const res = await api<{ data: Candidate[] }>(
-                                    'POST',
-                                    '/api/imports/extract',
-                                    { text },
-                                );
-                                setText('');
-                                toast.success(
-                                    res.data.length === 0
-                                        ? 'タスクになりそうなものは見つかりませんでした'
-                                        : `${res.data.length}件の候補を作成しました（まだタスクにはなっていません）`,
-                                );
-                                await load();
-                            })
-                        }
-                    >
-                        {busy ? '作成中…' : '候補を作る'}
-                    </Button>
-                    {!aiReady && (
-                        <span className="text-xs text-muted-foreground">
-                            先に下の「AIの設定」でAPIキーを登録してください
-                        </span>
-                    )}
-                </div>
-            </section>
-
-            <AiSettings onConfiguredChange={setAiReady} />
-
-            <details className="rounded-md border p-3">
-                <summary className="cursor-pointer text-sm font-semibold">
-                    候補を手で追加する（JSON）
-                </summary>
-                <div className="mt-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                        候補の配列（title, description, project_id,
-                        assignee_ids, visibility, start_date, due_date,
-                        source_type）を貼り付けます。日付は YYYY-MM-DD。
-                    </p>
-                    <Textarea
-                        aria-label="候補JSON"
-                        rows={8}
-                        className="font-mono text-xs"
-                        value={json}
-                        onChange={(e) => setJson(e.target.value)}
-                        placeholder={EXAMPLE_JSON}
-                    />
-                    <div className="flex gap-2">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setJson(EXAMPLE_JSON)}
-                        >
-                            例を入れる
-                        </Button>
-                        <Button
-                            size="sm"
-                            disabled={busy || json.trim() === ''}
-                            onClick={() =>
-                                run(async () => {
-                                    await api('POST', '/api/imports', { json });
-                                    setJson('');
-                                    toast.success(
-                                        '候補を作成しました（まだタスクにはなっていません）',
-                                    );
-                                    await load();
-                                })
-                            }
-                        >
-                            候補を作成
-                        </Button>
-                    </div>
-                </div>
-            </details>
 
             <ErrorBanner
                 message={error ?? ref.error}
@@ -749,6 +649,99 @@ export default function Imports() {
                     </ul>
                 </section>
             )}
+
+            <details className="rounded-md border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">
+                    メールの文章から候補を作る
+                </summary>
+                <div className="mt-2 space-y-2">
+                    <Textarea
+                        aria-label="メールの文章"
+                        rows={8}
+                        value={text}
+                        maxLength={20000}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="メールの本文を貼り付けてください"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            size="sm"
+                            disabled={busy || text.trim() === '' || !aiReady}
+                            onClick={() =>
+                                run(async () => {
+                                    const res = await api<{
+                                        data: Candidate[];
+                                    }>('POST', '/api/imports/extract', {
+                                        text,
+                                    });
+                                    setText('');
+                                    toast.success(
+                                        res.data.length === 0
+                                            ? 'タスクになりそうなものは見つかりませんでした'
+                                            : `${res.data.length}件の候補を作成しました（まだタスクにはなっていません）`,
+                                    );
+                                    await load();
+                                })
+                            }
+                        >
+                            {busy ? '作成中…' : '候補を作る'}
+                        </Button>
+                        {!aiReady && (
+                            <span className="text-xs text-muted-foreground">
+                                先に下の「AIの設定」でAPIキーを登録してください
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </details>
+
+            <AiSettings onConfiguredChange={setAiReady} />
+
+            <details className="rounded-md border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">
+                    候補を手で追加する（JSON）
+                </summary>
+                <div className="mt-2 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                        候補の配列（title, description, project_id,
+                        assignee_ids, visibility, start_date, due_date,
+                        source_type）を貼り付けます。日付は YYYY-MM-DD。
+                    </p>
+                    <Textarea
+                        aria-label="候補JSON"
+                        rows={8}
+                        className="font-mono text-xs"
+                        value={json}
+                        onChange={(e) => setJson(e.target.value)}
+                        placeholder={EXAMPLE_JSON}
+                    />
+                    <div className="flex gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setJson(EXAMPLE_JSON)}
+                        >
+                            例を入れる
+                        </Button>
+                        <Button
+                            size="sm"
+                            disabled={busy || json.trim() === ''}
+                            onClick={() =>
+                                run(async () => {
+                                    await api('POST', '/api/imports', { json });
+                                    setJson('');
+                                    toast.success(
+                                        '候補を作成しました（まだタスクにはなっていません）',
+                                    );
+                                    await load();
+                                })
+                            }
+                        >
+                            候補を作成
+                        </Button>
+                    </div>
+                </div>
+            </details>
 
             <ConfirmDialog
                 open={confirmOpen}

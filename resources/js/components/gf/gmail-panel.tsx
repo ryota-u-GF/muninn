@@ -149,7 +149,7 @@ export function GmailPanel({
 
     return (
         <section className="space-y-3 rounded-md border p-3">
-            <h2 className="font-semibold">Gmail</h2>
+            {!data.connected && <h2 className="font-semibold">Gmail</h2>}
             {!data.connected ? (
                 <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">
@@ -167,133 +167,16 @@ export function GmailPanel({
                     )}
                 </div>
             ) : (
-                <div className="space-y-3">
-                    <p className="text-sm">
-                        連携中：<strong>{data.google_email}</strong>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                            {data.last_synced_at
-                                ? `最終取得 ${new Date(data.last_synced_at).toLocaleString('ja-JP')}`
-                                : 'まだ取得していません'}
-                        </span>
-                    </p>
-                    {data.last_error && (
-                        <p className="text-xs text-red-600" role="alert">
-                            {data.last_error}
+                <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <p className="text-sm">
+                            連携中：<strong>{data.google_email}</strong>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                                {data.last_synced_at
+                                    ? `最終取得 ${new Date(data.last_synced_at).toLocaleString('ja-JP')}`
+                                    : 'まだ取得していません'}
+                            </span>
                         </p>
-                    )}
-                    <div className="grid max-w-xl gap-3 sm:grid-cols-2">
-                        <div className="grid gap-1">
-                            <Label htmlFor="gmail-scope">取り込み対象</Label>
-                            <NativeSelect
-                                id="gmail-scope"
-                                value={mode}
-                                onChange={(e) =>
-                                    setMode(e.target.value as 'inbox' | 'label')
-                                }
-                            >
-                                <option value="inbox">受信箱すべて</option>
-                                <option value="label">ラベルを指定</option>
-                            </NativeSelect>
-                        </div>
-                        {mode === 'label' && (
-                            <div className="grid gap-1">
-                                <Label htmlFor="gmail-label">ラベル名</Label>
-                                <Input
-                                    id="gmail-label"
-                                    value={label}
-                                    maxLength={100}
-                                    placeholder="例：タスク"
-                                    onChange={(e) => setLabel(e.target.value)}
-                                />
-                            </div>
-                        )}
-                        <div className="grid gap-1">
-                            <Label htmlFor="gmail-days">初回の取得期間</Label>
-                            <NativeSelect
-                                id="gmail-days"
-                                value={days}
-                                onChange={(e) =>
-                                    setDays(Number(e.target.value))
-                                }
-                            >
-                                {data.initial_days_options.map((d) => (
-                                    <option key={d} value={d}>
-                                        直近{d}日
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </div>
-                        <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                            <input
-                                type="checkbox"
-                                checked={exclude}
-                                onChange={(e) => setExclude(e.target.checked)}
-                            />
-                            プロモーション・ソーシャル・フォーラムのメールを除く
-                        </label>
-                        <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                            <input
-                                type="checkbox"
-                                checked={autoSync}
-                                onChange={(e) => setAutoSync(e.target.checked)}
-                            />
-                            アプリを開いている間、自動で取得する
-                        </label>
-                        {autoSync && (
-                            <div className="grid gap-1">
-                                <Label htmlFor="gmail-interval">
-                                    取得の間隔
-                                </Label>
-                                <NativeSelect
-                                    id="gmail-interval"
-                                    value={interval}
-                                    onChange={(e) =>
-                                        setIntervalMinutes(
-                                            Number(e.target.value),
-                                        )
-                                    }
-                                >
-                                    {data.sync_interval_options.map((m) => (
-                                        <option key={m} value={m}>
-                                            {m}分ごと
-                                        </option>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                                busy ||
-                                (mode === 'label' && label.trim() === '')
-                            }
-                            onClick={() =>
-                                run(async () => {
-                                    const res = await api<{ data: GmailData }>(
-                                        'PUT',
-                                        '/api/gmail',
-                                        {
-                                            scope_mode: mode,
-                                            label_name:
-                                                mode === 'label' ? label : null,
-                                            exclude_promotions: exclude,
-                                            initial_days: days,
-                                            auto_sync: autoSync,
-                                            sync_interval_minutes: interval,
-                                        },
-                                    );
-                                    apply(res.data);
-                                    toast.success(
-                                        '取り込みの設定を保存しました',
-                                    );
-                                })
-                            }
-                        >
-                            設定を保存
-                        </Button>
                         <Button
                             size="sm"
                             disabled={busy || !aiReady}
@@ -301,37 +184,188 @@ export function GmailPanel({
                         >
                             {busy ? '取得中…' : 'いま取得'}
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600"
-                            disabled={busy}
-                            onClick={() =>
-                                run(async () => {
-                                    if (
-                                        !window.confirm(
-                                            'Gmailの連携を解除しますか？（取り込み済みの候補は残ります）',
-                                        )
-                                    ) {
-                                        return;
-                                    }
-                                    const res = await api<{ data: GmailData }>(
-                                        'DELETE',
-                                        '/api/gmail',
-                                    );
-                                    apply(res.data);
-                                    toast.success('Gmailの連携を解除しました');
-                                })
-                            }
-                        >
-                            連携を解除
-                        </Button>
                         {!aiReady && (
                             <span className="text-xs text-muted-foreground">
                                 先に「AIの設定」でAPIキーを登録してください
                             </span>
                         )}
                     </div>
+                    {data.last_error && (
+                        <p className="text-xs text-red-600" role="alert">
+                            {data.last_error}
+                        </p>
+                    )}
+                    <details>
+                        <summary className="cursor-pointer text-xs text-muted-foreground">
+                            取り込みの設定
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                            <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+                                <div className="grid gap-1">
+                                    <Label htmlFor="gmail-scope">
+                                        取り込み対象
+                                    </Label>
+                                    <NativeSelect
+                                        id="gmail-scope"
+                                        value={mode}
+                                        onChange={(e) =>
+                                            setMode(
+                                                e.target.value as
+                                                    | 'inbox'
+                                                    | 'label',
+                                            )
+                                        }
+                                    >
+                                        <option value="inbox">
+                                            受信箱すべて
+                                        </option>
+                                        <option value="label">
+                                            ラベルを指定
+                                        </option>
+                                    </NativeSelect>
+                                </div>
+                                {mode === 'label' && (
+                                    <div className="grid gap-1">
+                                        <Label htmlFor="gmail-label">
+                                            ラベル名
+                                        </Label>
+                                        <Input
+                                            id="gmail-label"
+                                            value={label}
+                                            maxLength={100}
+                                            placeholder="例：タスク"
+                                            onChange={(e) =>
+                                                setLabel(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                )}
+                                <div className="grid gap-1">
+                                    <Label htmlFor="gmail-days">
+                                        初回の取得期間
+                                    </Label>
+                                    <NativeSelect
+                                        id="gmail-days"
+                                        value={days}
+                                        onChange={(e) =>
+                                            setDays(Number(e.target.value))
+                                        }
+                                    >
+                                        {data.initial_days_options.map((d) => (
+                                            <option key={d} value={d}>
+                                                直近{d}日
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </div>
+                                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={exclude}
+                                        onChange={(e) =>
+                                            setExclude(e.target.checked)
+                                        }
+                                    />
+                                    プロモーション・ソーシャル・フォーラムのメールを除く
+                                </label>
+                                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={autoSync}
+                                        onChange={(e) =>
+                                            setAutoSync(e.target.checked)
+                                        }
+                                    />
+                                    アプリを開いている間、自動で取得する
+                                </label>
+                                {autoSync && (
+                                    <div className="grid gap-1">
+                                        <Label htmlFor="gmail-interval">
+                                            取得の間隔
+                                        </Label>
+                                        <NativeSelect
+                                            id="gmail-interval"
+                                            value={interval}
+                                            onChange={(e) =>
+                                                setIntervalMinutes(
+                                                    Number(e.target.value),
+                                                )
+                                            }
+                                        >
+                                            {data.sync_interval_options.map(
+                                                (m) => (
+                                                    <option key={m} value={m}>
+                                                        {m}分ごと
+                                                    </option>
+                                                ),
+                                            )}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={
+                                        busy ||
+                                        (mode === 'label' &&
+                                            label.trim() === '')
+                                    }
+                                    onClick={() =>
+                                        run(async () => {
+                                            const res = await api<{
+                                                data: GmailData;
+                                            }>('PUT', '/api/gmail', {
+                                                scope_mode: mode,
+                                                label_name:
+                                                    mode === 'label'
+                                                        ? label
+                                                        : null,
+                                                exclude_promotions: exclude,
+                                                initial_days: days,
+                                                auto_sync: autoSync,
+                                                sync_interval_minutes: interval,
+                                            });
+                                            apply(res.data);
+                                            toast.success(
+                                                '取り込みの設定を保存しました',
+                                            );
+                                        })
+                                    }
+                                >
+                                    設定を保存
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600"
+                                    disabled={busy}
+                                    onClick={() =>
+                                        run(async () => {
+                                            if (
+                                                !window.confirm(
+                                                    'Gmailの連携を解除しますか？（取り込み済みの候補は残ります）',
+                                                )
+                                            ) {
+                                                return;
+                                            }
+                                            const res = await api<{
+                                                data: GmailData;
+                                            }>('DELETE', '/api/gmail');
+                                            apply(res.data);
+                                            toast.success(
+                                                'Gmailの連携を解除しました',
+                                            );
+                                        })
+                                    }
+                                >
+                                    連携を解除
+                                </Button>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             )}
         </section>
