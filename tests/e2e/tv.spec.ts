@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { apiCall, login } from './helpers';
+import { login } from './helpers';
 
 /** ページ内の時計だけを注入する（OS・サーバーの時刻は変更しない） */
 const jst = (s: string) => new Date(`${s}+09:00`);
