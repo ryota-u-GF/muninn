@@ -40,10 +40,6 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
-        // Gmail 連携（読み取り専用）の戻り先。Google Cloud の OAuth クライアントに同じ URI を登録する。
-        // Meet のメモ（カレンダー・ドキュメントの読み取り）連携の戻り先。同じ OAuth クライアントに登録する。
-        'meet_redirect' => env('GOOGLE_MEET_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8080'), '/').'/auth/meet/callback'),
-        'gmail_redirect' => env('GOOGLE_GMAIL_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8080'), '/').'/auth/gmail/callback'),
     ],
 
 ];

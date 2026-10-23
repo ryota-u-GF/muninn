@@ -2,11 +2,8 @@ import { usePage } from '@inertiajs/react';
 import { CheckSquare, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AiSettings } from '@/components/gf/ai-settings';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
-import { GmailPanel } from '@/components/gf/gmail-panel';
-import { MeetPanel } from '@/components/gf/meet-panel';
-import { PENDING_COUNT_EVENT } from '@/hooks/use-auto-gmail-sync';
+import { PENDING_COUNT_EVENT } from '@/hooks/use-pending-mail-count';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,9 +48,6 @@ export default function Imports() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [json, setJson] = useState('');
-    const [text, setText] = useState('');
-    const [kind, setKind] = useState<'mail' | 'minutes'>('mail');
-    const [aiReady, setAiReady] = useState(false);
     const [busy, setBusy] = useState(false);
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -63,9 +57,7 @@ export default function Imports() {
         payload: CandidatePayload;
     } | null>(null);
 
-    useUnsavedGuard(
-        json.trim() !== '' || text.trim() !== '' || editing !== null,
-    );
+    useUnsavedGuard(json.trim() !== '' || editing !== null);
 
     const load = useCallback(async () => {
         try {
@@ -169,10 +161,6 @@ export default function Imports() {
             <p className="text-sm text-muted-foreground">
                 メール・議事録から見つけたタスクの候補を、確認して登録します。候補は自分だけが見られ、承認したものだけがタスクになります。
             </p>
-
-            <GmailPanel aiReady={aiReady} onSynced={load} />
-
-            <MeetPanel aiReady={aiReady} onSynced={load} />
 
             <ErrorBanner
                 message={error ?? ref.error}
@@ -676,74 +664,6 @@ export default function Imports() {
                     </ul>
                 </section>
             )}
-
-            <details className="rounded-md border p-3">
-                <summary className="cursor-pointer text-sm font-semibold">
-                    文章から候補を作る（メール・議事録）
-                </summary>
-                <div className="mt-2 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <label htmlFor="extract-kind" className="text-sm">
-                            文章の種類
-                        </label>
-                        <NativeSelect
-                            id="extract-kind"
-                            className="w-40"
-                            value={kind}
-                            onChange={(e) =>
-                                setKind(e.target.value as 'mail' | 'minutes')
-                            }
-                        >
-                            <option value="mail">メール</option>
-                            <option value="minutes">議事録</option>
-                        </NativeSelect>
-                    </div>
-                    <Textarea
-                        aria-label="文章"
-                        rows={8}
-                        value={text}
-                        maxLength={20000}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder={
-                            kind === 'minutes'
-                                ? '議事録（Google Meet のメモなど）を貼り付けてください。「◯◯さんが△△する」など、決まったことと担当者を読み取ります。'
-                                : 'メールの本文を貼り付けてください'
-                        }
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            size="sm"
-                            disabled={busy || text.trim() === '' || !aiReady}
-                            onClick={() =>
-                                run(async () => {
-                                    const res = await api<{
-                                        data: Candidate[];
-                                    }>('POST', '/api/imports/extract', {
-                                        text,
-                                        kind,
-                                    });
-                                    setText('');
-                                    toast.success(
-                                        res.data.length === 0
-                                            ? 'タスクになりそうなものは見つかりませんでした'
-                                            : `${res.data.length}件の候補を作成しました（まだタスクにはなっていません）`,
-                                    );
-                                    await load();
-                                })
-                            }
-                        >
-                            {busy ? '作成中…' : '候補を作る'}
-                        </Button>
-                        {!aiReady && (
-                            <span className="text-xs text-muted-foreground">
-                                先に下の「AIの設定」でAPIキーを登録してください
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </details>
-
-            <AiSettings onConfiguredChange={setAiReady} />
 
             <details className="rounded-md border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">

@@ -25,45 +25,6 @@ return [
         'import_items' => 100,
     ],
 
-    // AI（Claude）連携。API キーは利用者ごとに登録する。
-    'ai' => [
-        'default_model' => 'claude-haiku-5-5',
-        // 画面で選べるモデル（id => 表示名）
-        'models' => [
-            'claude-haiku-5-5' => 'Haiku 5.5（軽い・低コスト／既定）',
-            'claude-sonnet-5-5' => 'Sonnet 5.5（標準）',
-            'claude-opus-5-5' => 'Opus 5.5（高精度・高コスト）',
-        ],
-        // 1 回に AI へ送る文章の最大文字数
-        'max_text_chars' => 20000,
-    ],
-
-    // Gmail 連携（読み取り専用）
-    'gmail' => [
-        'scope' => 'https://www.googleapis.com/auth/gmail.readonly',
-        // 1 回の取得で処理するメールの最大数（AI の呼び出し回数を抑える）
-        'max_per_sync' => 5,
-        // 1 回に確認するメールの最大数（新しい順）
-        'list_size' => 100,
-        'initial_days_options' => [3, 7, 30],
-        // アプリを開いている間の自動取得の間隔（分）。画面で選べる値と、既定値。
-        'sync_interval_options' => [5, 10, 30],
-        'default_sync_interval' => 10,
-    ],
-
-    // Meet のメモの連携（カレンダーの予定に付いたドキュメントを読む。読み取り専用）
-    'meet' => [
-        'scopes' => [
-            'https://www.googleapis.com/auth/calendar.events.readonly',
-            'https://www.googleapis.com/auth/documents.readonly',
-        ],
-        // 1 回の取得で処理するメモの最大数（AI の呼び出し回数を抑える）
-        'max_per_sync' => 3,
-        // 1 回に確認する予定の最大数
-        'list_size' => 100,
-        'default_keywords' => 'Gemini,メモ,議事録,Notes',
-    ],
-
     // 外部システム（メール・議事録を溜めて AI で判定する側）からの候補の受け取り。トークンが空なら無効。
     'inbound' => [
         'token' => env('GF_INBOUND_TOKEN', ''),

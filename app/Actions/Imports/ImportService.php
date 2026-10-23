@@ -30,9 +30,9 @@ class ImportService
      * @param  array{external_id?: string, source_url?: string|null}  $inbound  外部システムから届いた候補の付加情報
      * @return list<ImportCandidate>
      */
-    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null, array $inbound = []): array
+    public function createCandidates(User $owner, string $source, array $items, array $inbound = []): array
     {
-        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId, $inbound) {
+        return DB::transaction(function () use ($owner, $source, $items, $inbound) {
             $created = [];
             foreach ($items as $item) {
                 $normalized = $this->normalizer->normalize($item, $owner);
@@ -57,7 +57,6 @@ class ImportService
                     'warnings' => $warnings,
                     'status' => CandidateStatus::Pending,
                     'fingerprint' => $fingerprint,
-                    'mail_message_id' => $mailMessageId,
                 ] + $inbound)->refresh();
             }
 
@@ -79,7 +78,7 @@ class ImportService
         }
 
         try {
-            return $this->createCandidates($owner, 'inbound', [$item], null, ['external_id' => $externalId, 'source_url' => $sourceUrl])[0];
+            return $this->createCandidates($owner, 'inbound', [$item], ['external_id' => $externalId, 'source_url' => $sourceUrl])[0];
         } catch (UniqueConstraintViolationException) {
             // 同じ候補の同時送信。先に入ったほうを正とする
             return null;

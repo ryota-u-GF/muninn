@@ -1,21 +1,16 @@
 <?php
 
-use App\Http\Controllers\Api\AiSettingController;
 use App\Http\Controllers\Api\DocumentController;
-use App\Http\Controllers\Api\GmailController;
 use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\ImportController;
-use App\Http\Controllers\Api\MeetController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\ProjectAccessController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TvController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Auth\GmailController as GmailOAuthController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\MeetController as MeetOAuthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,12 +40,6 @@ Route::middleware('auth')->group(function () {
     Route::inertia('history', 'history')->name('history');
     Route::inertia('projects', 'projects')->middleware('can:manage-projects')->name('projects');
     Route::inertia('imports', 'imports')->middleware('can:use-imports')->name('imports');
-    Route::middleware('can:use-imports')->group(function () {
-        Route::get('auth/gmail/redirect', [GmailOAuthController::class, 'redirect'])->name('gmail.redirect');
-        Route::get('auth/gmail/callback', [GmailOAuthController::class, 'callback'])->name('gmail.callback');
-        Route::get('auth/meet/redirect', [MeetOAuthController::class, 'redirect'])->name('meet.redirect');
-        Route::get('auth/meet/callback', [MeetOAuthController::class, 'callback'])->name('meet.callback');
-    });
     Route::inertia('admin/access', 'admin/access')->middleware('can:admin')->name('admin.access');
     Route::inertia('tv', 'tv')->middleware('can:view-tv')->name('tv.page');
 
@@ -88,31 +77,9 @@ Route::middleware('auth')->group(function () {
             Route::get('imports', [ImportController::class, 'index']);
             Route::get('imports/pending-count', [ImportController::class, 'pendingCount']);
             Route::post('imports', [ImportController::class, 'store'])->middleware('throttle:imports');
-            Route::post('imports/extract', [ImportController::class, 'extract'])->middleware('throttle:ai');
             Route::post('imports/confirm', [ImportController::class, 'confirm'])->middleware('throttle:imports');
             Route::patch('imports/{candidate}', [ImportController::class, 'update'])->whereNumber('candidate');
             Route::post('imports/{candidate}/reject', [ImportController::class, 'reject'])->whereNumber('candidate');
-        });
-
-        Route::middleware('can:use-imports')->prefix('gmail')->group(function () {
-            Route::get('/', [GmailController::class, 'show']);
-            Route::put('/', [GmailController::class, 'update']);
-            Route::delete('/', [GmailController::class, 'destroy']);
-            Route::post('sync', [GmailController::class, 'sync'])->middleware('throttle:gmail-sync');
-        });
-
-        Route::middleware('can:use-imports')->prefix('meet')->group(function () {
-            Route::get('/', [MeetController::class, 'show']);
-            Route::put('/', [MeetController::class, 'update']);
-            Route::delete('/', [MeetController::class, 'destroy']);
-            Route::post('sync', [MeetController::class, 'sync'])->middleware('throttle:meet-sync');
-        });
-
-        Route::middleware('can:use-imports')->prefix('ai-settings')->group(function () {
-            Route::get('/', [AiSettingController::class, 'show']);
-            Route::put('/', [AiSettingController::class, 'update'])->middleware('throttle:ai');
-            Route::delete('/', [AiSettingController::class, 'destroy']);
-            Route::post('test', [AiSettingController::class, 'test'])->middleware('throttle:ai');
         });
 
         Route::middleware('can:admin')->group(function () {
