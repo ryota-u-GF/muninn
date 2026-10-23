@@ -10,14 +10,14 @@ Golden Field 社内向けの単一会社用業務アプリ。共有タスク・�
 
 ## 1. 構成
 
-| 項目         | 内容                                                                                    |
-| ------------ | --------------------------------------------------------------------------------------- |
-| バックエンド | Laravel 13.35（PHP 8.3 以上。開発コンテナは PHP 8.5）                                   |
-| 画面         | React 19 + TypeScript + Inertia 3（Laravel 公式 React Starter Kit `dev-main` から作成） |
-| ビルド       | Vite 8（vite-plus）、Tailwind CSS 4                                                     |
-| DB           | MySQL 8.4（本番想定と同じ種類）。単体テストは SQLite（インメモリ）と MySQL の両方で実行 |
+| 項目         | 内容                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------- |
+| バックエンド | Laravel 13.35（PHP 8.3 以上。開発コンテナは PHP 8.5）                                                           |
+| 画面         | React 19 + TypeScript + Inertia 3（Laravel 公式 React Starter Kit `dev-main` から作成）                         |
+| ビルド       | Vite 8（vite-plus）、Tailwind CSS 4                                                                             |
+| DB           | MySQL 8.4（本番想定と同じ種類）。単体テストは SQLite（インメモリ）と MySQL の両方で実行                         |
 | 認証         | セッション Cookie + CSRF。メール＋パスワード（管理者が設定）、Google（Socialite）、開発は環境限定のデモログイン |
-| 依存の固定   | `composer.lock` / `package-lock.json`                                                   |
+| 依存の固定   | `composer.lock` / `package-lock.json`                                                                           |
 
 Starter Kit からの主な変更：Fortify（パスワード・2FA・パスキー・新規登録・パスワード再設定）と Wayfinder を撤去、外部フォント（Bunny Fonts）の読み込みを撤去。
 
