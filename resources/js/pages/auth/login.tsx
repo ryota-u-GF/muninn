@@ -23,7 +23,7 @@ export default function Login({
 
     return (
         <AuthLayout
-            title="業務アプリ"
+            title="Muninn"
             description="メールアドレスとパスワード、または Google アカウントでログインしてください"
         >
             <Head title="ログイン" />
