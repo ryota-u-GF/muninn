@@ -209,6 +209,6 @@ test('今日・自分のタスク・ボードの担当者別', async ({ page }) 
     await expect(page).toHaveURL(/view=people/);
     await expect(page.getByRole('region', { name: '未割当' })).toBeVisible();
     await expect(
-        page.getByRole('region', { name: '鈴木 一郎（エンジニア）' }),
+        page.getByRole('region', { name: 'エンジニア' }),
     ).toBeVisible();
 });
