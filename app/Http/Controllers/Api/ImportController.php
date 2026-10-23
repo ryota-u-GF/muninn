@@ -31,14 +31,20 @@ class ImportController extends Controller
         ]);
     }
 
-    /** サイドバーに出す、未確認の候補の件数（本人分のみ）。 */
+    /** サイドバーに出す、未確認の候補の件数（本人分のみ）。メールと議事録に分けて返す。 */
     public function pendingCount(Request $request): JsonResponse
     {
+        $kinds = ImportCandidate::query()->with('mailMessage')
+            ->where('owner_id', $request->user()->id)
+            ->where('status', CandidateStatus::Pending->value)
+            ->get()->map(fn (ImportCandidate $candidate) => $candidate->kind());
+
+        $minutes = $kinds->filter(fn (string $kind) => $kind === 'minutes')->count();
+
         return response()->json(['data' => [
-            'count' => ImportCandidate::query()
-                ->where('owner_id', $request->user()->id)
-                ->where('status', CandidateStatus::Pending->value)
-                ->count(),
+            'count' => $kinds->count(),
+            'mail' => $kinds->count() - $minutes,
+            'minutes' => $minutes,
         ]]);
     }
 

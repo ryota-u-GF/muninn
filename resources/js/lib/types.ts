@@ -114,9 +114,12 @@ export type CandidatePayload = {
     source_type: string;
 };
 
+export type CandidateKind = 'mail' | 'minutes';
+
 export type Candidate = {
     id: number;
     source: string;
+    kind: CandidateKind;
     status: 'pending' | 'confirmed' | 'rejected';
     payload: CandidatePayload | null;
     warnings: string[];

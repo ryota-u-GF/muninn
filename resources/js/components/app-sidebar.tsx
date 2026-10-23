@@ -13,7 +13,7 @@ import {
 import AppLogo from '@/components/app-logo';
 import { NavMain, NavSingle } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { usePendingMailCount } from '@/hooks/use-pending-mail-count';
+import { usePendingCandidateCounts } from '@/hooks/use-pending-candidate-counts';
 import {
     Sidebar,
     SidebarContent,
@@ -29,7 +29,7 @@ export function AppSidebar() {
     const { auth } = usePage().props;
     const role = auth.user?.role;
     const internal = role === 'admin' || role === 'employee';
-    const pendingMail = usePendingMailCount(internal);
+    const pending = usePendingCandidateCounts(internal);
 
     const tasks: NavItem[] = [
         { title: 'タスクボード', href: '/', icon: KanbanSquare },
@@ -37,16 +37,21 @@ export function AppSidebar() {
         { title: 'スケジュール', href: '/schedule', icon: CalendarRange },
     ];
     const docs: NavItem[] = [
-        { title: '議事録', href: '/minutes', icon: NotebookPen },
+        {
+            title: '議事録',
+            href: '/minutes',
+            icon: NotebookPen,
+            badge: pending.minutes,
+        },
         { title: '変更履歴', href: '/history', icon: History },
     ];
-    // 候補（メール・議事録から見つけたタスク）は社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
+    // メール（メールから見つけたタスクの候補）は社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
     if (internal) {
         docs.unshift({
-            title: '候補',
+            title: 'メール',
             href: '/imports',
             icon: Mail,
-            badge: pendingMail,
+            badge: pending.mail,
         });
     }
     const manage: NavItem[] = [];

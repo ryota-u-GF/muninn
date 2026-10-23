@@ -15,6 +15,8 @@ class CandidateResource extends JsonResource
         return [
             'id' => $this->id,
             'source' => $this->source,
+            // 画面の振り分け：minutes（議事録）／mail（メール・その他）
+            'kind' => $this->kind(),
             'status' => $this->status->value,
             'payload' => $this->payload,
             'warnings' => $this->warnings ?? [],

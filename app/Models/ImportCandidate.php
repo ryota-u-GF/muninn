@@ -25,6 +25,14 @@ class ImportCandidate extends Model
 {
     protected $guarded = ['id', 'revision'];
 
+    /** 議事録から見つけた候補なら 'minutes'、それ以外（メール・手動など）は 'mail' */
+    public function kind(): string
+    {
+        $minutes = ($this->payload['source_type'] ?? null) === 'minutes' || $this->mailMessage?->kind === 'minutes';
+
+        return $minutes ? 'minutes' : 'mail';
+    }
+
     /** @return BelongsTo<MailMessage, $this> */
     public function mailMessage(): BelongsTo
     {
