@@ -68,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('gmail-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
         // Meet のメモの取得（Gmail と同じく、利用者ごとに 1 分 12 回まで）
         RateLimiter::for('meet-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
+        // 外部システムからの候補の受け取り（トークン単位ではなく IP 単位で 1 分 60 回まで）
+        RateLimiter::for('inbound', fn (Request $request) => Limit::perMinute(60)->by('ip:'.$request->ip()));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()->id ?? $request->ip())));
     }

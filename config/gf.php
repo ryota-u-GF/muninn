@@ -64,6 +64,11 @@ return [
         'default_keywords' => 'Gemini,メモ,議事録,Notes',
     ],
 
+    // 外部システム（メール・議事録を溜めて AI で判定する側）からの候補の受け取り。トークンが空なら無効。
+    'inbound' => [
+        'token' => env('GF_INBOUND_TOKEN', ''),
+    ],
+
     'history' => [
         'global_limit' => 500,
         'entity_limit' => 200,

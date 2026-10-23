@@ -29,9 +29,9 @@ class ImportService
      * @param  list<array<string, mixed>>  $items
      * @return list<ImportCandidate>
      */
-    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null): array
+    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null, ?string $externalId = null): array
     {
-        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId) {
+        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId, $externalId) {
             $created = [];
             foreach ($items as $item) {
                 $normalized = $this->normalizer->normalize($item, $owner);
@@ -57,11 +57,33 @@ class ImportService
                     'status' => CandidateStatus::Pending,
                     'fingerprint' => $fingerprint,
                     'mail_message_id' => $mailMessageId,
+                    'external_id' => $externalId,
                 ])->refresh();
             }
 
             return $created;
         });
+    }
+
+    /**
+     * 外部システムから届いた候補を 1 件作る。同じ外部 ID を送り直された（作成済みの）ときは作らず null を返す。
+     * 作成済みの候補（編集・確定・却下を含む）は上書きしない。
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public function createInbound(User $owner, array $item, string $externalId): ?ImportCandidate
+    {
+        $exists = fn () => ImportCandidate::query()->where('owner_id', $owner->id)->where('external_id', $externalId)->exists();
+        if ($exists()) {
+            return null;
+        }
+
+        try {
+            return $this->createCandidates($owner, 'inbound', [$item], null, $externalId)[0];
+        } catch (UniqueConstraintViolationException) {
+            // 同じ候補の同時送信。先に入ったほうを正とする
+            return null;
+        }
     }
 
     /** @param array<string, mixed> $item */
