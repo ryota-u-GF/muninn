@@ -13,7 +13,7 @@ use App\Models\ImportCandidate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** メール（旧AI候補）の候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
+/** メール・議事録から見つけたタスクの候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
 class ImportController extends Controller
 {
     public function __construct(private ImportService $imports) {}

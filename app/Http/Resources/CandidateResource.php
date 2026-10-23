@@ -20,7 +20,7 @@ class CandidateResource extends JsonResource
             'warnings' => $this->warnings ?? [],
             'revision' => $this->revision,
             'task_id' => $this->task_id,
-            // 取り込み元のメール（Gmail 連携のとき）。本文は保持しない。
+            // 旧 Gmail/Meet 連携で作った候補の取り込み元。新しい候補には付かない（外部から届く候補は source_url を使う）。本文は保持しない。
             'mail' => $this->mailMessage === null ? null : [
                 'subject' => $this->mailMessage->subject,
                 'sender' => $this->mailMessage->sender,

@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Imports\ImportService;
 use App\Models\ImportCandidate;
 use App\Models\Task;
+use Exception;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use Mockery\MockInterface;
 use Tests\Feature\Concerns\BuildsScenario;
 use Tests\TestCase;
 
@@ -112,13 +116,70 @@ class InboundCandidateTest extends TestCase
 
         $this->loginAs($this->employee)->getJson('/api/imports')->assertJsonPath('data.0.source_url', $url);
 
-        $this->send([$this->item(['external_id' => 'x', 'source_url' => 'javascript:alert(1)'])])->assertUnprocessable();
-        $this->send([$this->item(['external_id' => 'y', 'source_url' => 'http://example.com'])])->assertUnprocessable();
+        $this->send([$this->item(['external_id' => 'x', 'source_url' => 'javascript:alert(1)'])])->assertOk()->assertJsonPath('data.0.result', 'rejected');
+        $this->send([$this->item(['external_id' => 'y', 'source_url' => 'http://example.com'])])->assertOk()->assertJsonPath('data.0.result', 'rejected');
+        $this->assertSame(1, ImportCandidate::query()->count());
     }
 
-    public function test_validates_the_request_shape(): void
+    public function test_an_invalid_item_is_rejected_alone_and_the_rest_are_created(): void
+    {
+        $response = $this->send([
+            $this->item(['external_id' => 'ok-1']),
+            $this->item(['external_id' => 'too-long', 'title' => str_repeat('あ', 301)]),
+            $this->item(['external_id' => 'bad-url', 'source_url' => 'http://example.com']),
+            ['title' => 'external_id なし', 'owner_email' => $this->employee->email],
+            $this->item(['external_id' => 'ok-2']),
+        ])->assertCreated();
+
+        $this->assertSame(['created', 'rejected', 'rejected', 'rejected', 'created'], array_column($response->json('data'), 'result'));
+        $this->assertNotEmpty($response->json('data.1.message'));
+        $this->assertNull($response->json('data.3.external_id'));
+        $this->assertSame(2, ImportCandidate::query()->count());
+    }
+
+    public function test_the_batch_shape_is_validated(): void
     {
         $this->send([])->assertUnprocessable();
-        $this->send([['title' => 'external_id なし', 'owner_email' => $this->employee->email]])->assertUnprocessable();
+        $this->postJson('/api/inbound/candidates', [], ['Authorization' => 'Bearer '.self::TOKEN])->assertUnprocessable();
+    }
+
+    public function test_duplicate_reports_the_state_of_the_existing_candidate(): void
+    {
+        $this->send([$this->item()])->assertCreated();
+        $candidate = ImportCandidate::query()->sole();
+        $this->loginAs($this->employee)->postJson("/api/imports/{$candidate->id}/reject", ['expected_revision' => 1])->assertOk();
+
+        $this->send([$this->item(['title' => '直した内容'])])->assertOk()
+            ->assertJsonPath('data.0.result', 'duplicate')
+            ->assertJsonPath('data.0.candidate_id', $candidate->id)
+            ->assertJsonPath('data.0.status', 'rejected');
+    }
+
+    public function test_a_concurrent_duplicate_send_returns_the_existing_candidate(): void
+    {
+        $this->partialMock(ImportService::class, function (MockInterface $mock) {
+            // 存在確認の後、保存の直前に別のリクエストが同じ候補を作った状況
+            $mock->shouldReceive('createCandidates')->once()->andReturnUsing(function () {
+                ImportCandidate::query()->create([
+                    'owner_id' => $this->employee->id, 'source' => 'inbound', 'external_id' => 'hub-1',
+                    'status' => 'pending', 'fingerprint' => 'x',
+                ]);
+                throw new UniqueConstraintViolationException('mysql', 'insert', [], new Exception('duplicate'));
+            });
+        });
+
+        $this->send([$this->item()])->assertOk()
+            ->assertJsonPath('data.0.result', 'duplicate')
+            ->assertJsonPath('data.0.status', 'pending');
+        $this->assertSame(1, ImportCandidate::query()->count());
+    }
+
+    public function test_assignees_without_project_access_are_dropped_with_a_warning(): void
+    {
+        $this->send([$this->item(['assignee_emails' => [$this->c3->email, $this->employee2->email]])])->assertCreated();
+
+        $candidate = ImportCandidate::query()->sole();
+        $this->assertSame([$this->employee2->id], $candidate->payload['assignee_ids']);
+        $this->assertNotEmpty($candidate->warnings);
     }
 }

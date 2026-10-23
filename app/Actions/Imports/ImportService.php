@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * メール（旧AI候補）：入力 → 本人限定の候補 → 人が確認 → 選択分だけタスク化。
+ * 候補：外部システムからの受信・手動 JSON → 本人限定の候補 → 人が確認 → 選択分だけタスク化。
  * AI や外部からの直接の共有化経路は持たない。
  */
 class ImportService
@@ -65,24 +65,30 @@ class ImportService
     }
 
     /**
-     * 外部システムから届いた候補を 1 件作る。同じ外部 ID を送り直された（作成済みの）ときは作らず null を返す。
-     * 作成済みの候補（編集・確定・却下を含む）は上書きしない。
+     * 外部システムから届いた候補を 1 件作る。同じ外部 ID が作成済み（編集・確定・却下を含む）なら、作らず上書きもせず、
+     * 既存の候補を返す。
      *
      * @param  array<string, mixed>  $item
+     * @return array{0: ImportCandidate, 1: bool} 候補と、今回作ったかどうか
      */
-    public function createInbound(User $owner, array $item, string $externalId, ?string $sourceUrl = null): ?ImportCandidate
+    public function createInbound(User $owner, array $item, string $externalId, ?string $sourceUrl = null): array
     {
-        $exists = fn () => ImportCandidate::query()->where('owner_id', $owner->id)->where('external_id', $externalId)->exists();
-        if ($exists()) {
-            return null;
+        $existing = $this->findInbound($owner, $externalId);
+        if ($existing !== null) {
+            return [$existing, false];
         }
 
         try {
-            return $this->createCandidates($owner, 'inbound', [$item], ['external_id' => $externalId, 'source_url' => $sourceUrl])[0];
-        } catch (UniqueConstraintViolationException) {
+            return [$this->createCandidates($owner, 'inbound', [$item], ['external_id' => $externalId, 'source_url' => $sourceUrl])[0], true];
+        } catch (UniqueConstraintViolationException $e) {
             // 同じ候補の同時送信。先に入ったほうを正とする
-            return null;
+            return [$this->findInbound($owner, $externalId) ?? throw $e, false];
         }
+    }
+
+    private function findInbound(User $owner, string $externalId): ?ImportCandidate
+    {
+        return ImportCandidate::query()->where('owner_id', $owner->id)->where('external_id', $externalId)->first();
     }
 
     /** @param array<string, mixed> $item */

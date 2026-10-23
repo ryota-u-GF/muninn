@@ -6,7 +6,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * 取り込み済みメールの最小限の記録（本文は持たない）。
+ * 旧 Gmail/Meet 連携で取り込んだメール・メモの最小限の記録（本文は持たない）。
+ * 連携の撤去後は新しく作らず、既存の候補から元のメール・メモを開くリンクのためだけに残している。
  *
  * @property int $id
  * @property int $owner_id

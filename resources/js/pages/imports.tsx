@@ -92,6 +92,17 @@ export default function Imports() {
 
     useEffect(() => {
         void load();
+
+        // 候補は外部システムから届くため、タブに戻ったときに読み直す
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') {
+                void load();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+
+        return () =>
+            document.removeEventListener('visibilitychange', onVisible);
     }, [load]);
 
     const run = async (fn: () => Promise<void>) => {
