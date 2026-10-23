@@ -2,10 +2,10 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 export const USERS = {
-    admin: '山田 太郎（社長）',
-    sales: '佐藤 花子（営業）',
-    engineer: '鈴木 一郎（エンジニア）',
-    c1: '外注 佐藤',
+    admin: '社長',
+    sales: '営業',
+    engineer: 'エンジニア',
+    c1: '外注',
 } as const;
 
 export async function login(page: Page, who: keyof typeof USERS) {

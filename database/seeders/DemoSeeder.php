@@ -45,10 +45,10 @@ class DemoSeeder extends Seeder
         $d = fn (int $offset) => $today->addDays($offset)->format('Y-m-d');
 
         // 利用者
-        $president = $this->users->create(null, '山田 太郎（社長）', 'president@example.test', Role::Admin);
-        $sales = $this->users->create($president, '佐藤 花子（営業）', 'sales@example.test', Role::Employee);
-        $engineer = $this->users->create($president, '鈴木 一郎（エンジニア）', 'engineer@example.test', Role::Employee);
-        $c1 = $this->users->create($president, '外注 佐藤', 'contractor1@example.test', Role::Contractor);
+        $president = $this->users->create(null, '社長', 'president@example.test', Role::Admin);
+        $sales = $this->users->create($president, '営業', 'sales@example.test', Role::Employee);
+        $engineer = $this->users->create($president, 'エンジニア', 'engineer@example.test', Role::Employee);
+        $c1 = $this->users->create($president, '外注', 'contractor1@example.test', Role::Contractor);
         $internal = [$president, $sales, $engineer];
 
         // 案件（プロジェクト1〜3）
