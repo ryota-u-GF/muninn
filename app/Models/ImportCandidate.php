@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $fingerprint
  * @property int|null $mail_message_id
  * @property string|null $external_id 外部システムから受け取った候補の、先方での ID
+ * @property string|null $source_url 外部システムから受け取った候補の、元のメール・議事録へのリンク
  * @property-read MailMessage|null $mailMessage
  */
 class ImportCandidate extends Model

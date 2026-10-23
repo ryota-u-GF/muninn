@@ -27,11 +27,12 @@ class ImportService
 
     /**
      * @param  list<array<string, mixed>>  $items
+     * @param  array{external_id?: string, source_url?: string|null}  $inbound  外部システムから届いた候補の付加情報
      * @return list<ImportCandidate>
      */
-    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null, ?string $externalId = null): array
+    public function createCandidates(User $owner, string $source, array $items, ?int $mailMessageId = null, array $inbound = []): array
     {
-        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId, $externalId) {
+        return DB::transaction(function () use ($owner, $source, $items, $mailMessageId, $inbound) {
             $created = [];
             foreach ($items as $item) {
                 $normalized = $this->normalizer->normalize($item, $owner);
@@ -57,8 +58,7 @@ class ImportService
                     'status' => CandidateStatus::Pending,
                     'fingerprint' => $fingerprint,
                     'mail_message_id' => $mailMessageId,
-                    'external_id' => $externalId,
-                ])->refresh();
+                ] + $inbound)->refresh();
             }
 
             return $created;
@@ -71,7 +71,7 @@ class ImportService
      *
      * @param  array<string, mixed>  $item
      */
-    public function createInbound(User $owner, array $item, string $externalId): ?ImportCandidate
+    public function createInbound(User $owner, array $item, string $externalId, ?string $sourceUrl = null): ?ImportCandidate
     {
         $exists = fn () => ImportCandidate::query()->where('owner_id', $owner->id)->where('external_id', $externalId)->exists();
         if ($exists()) {
@@ -79,7 +79,7 @@ class ImportService
         }
 
         try {
-            return $this->createCandidates($owner, 'inbound', [$item], null, $externalId)[0];
+            return $this->createCandidates($owner, 'inbound', [$item], null, ['external_id' => $externalId, 'source_url' => $sourceUrl])[0];
         } catch (UniqueConstraintViolationException) {
             // 同じ候補の同時送信。先に入ったほうを正とする
             return null;

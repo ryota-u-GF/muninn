@@ -36,6 +36,7 @@ const SOURCE_LABELS: Record<string, string> = {
     ai_minutes: '議事録から作成',
     gmail: 'Gmail',
     meet: 'Meetのメモ',
+    inbound: '外部から受信',
 };
 
 const VISIBILITY_LABELS: Record<Visibility, string> = {
@@ -164,9 +165,9 @@ export default function Imports() {
     );
 
     return (
-        <Page title="メール">
+        <Page title="タスク候補">
             <p className="text-sm text-muted-foreground">
-                メールから見つけたタスクの候補を、確認して登録します。候補は自分だけが見られ、承認したものだけがタスクになります。
+                メール・議事録から見つけたタスクの候補を、確認して登録します。候補は自分だけが見られ、承認したものだけがタスクになります。
             </p>
 
             <GmailPanel aiReady={aiReady} onSynced={load} />
@@ -571,6 +572,20 @@ export default function Imports() {
                                                                 'minutes'
                                                                     ? 'メモを開く'
                                                                     : 'Gmailで開く'}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {c.source_url && (
+                                                        <div className="text-xs">
+                                                            <a
+                                                                href={
+                                                                    c.source_url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-blue-700 underline"
+                                                            >
+                                                                元を開く
                                                             </a>
                                                         </div>
                                                     )}

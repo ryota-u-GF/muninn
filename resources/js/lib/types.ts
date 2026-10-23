@@ -129,6 +129,7 @@ export type Candidate = {
         received_at: string | null;
         url: string;
     } | null;
+    source_url: string | null;
     created_at: string | null;
 };
 

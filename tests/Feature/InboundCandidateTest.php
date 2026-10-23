@@ -105,6 +105,17 @@ class InboundCandidateTest extends TestCase
         $this->assertSame('見積を送る', Task::query()->sole()->title);
     }
 
+    public function test_keeps_the_source_link_and_only_accepts_https(): void
+    {
+        $url = 'https://mail.google.com/mail/u/0/#all/abc';
+        $this->send([$this->item(['source_url' => $url])])->assertCreated();
+
+        $this->loginAs($this->employee)->getJson('/api/imports')->assertJsonPath('data.0.source_url', $url);
+
+        $this->send([$this->item(['external_id' => 'x', 'source_url' => 'javascript:alert(1)'])])->assertUnprocessable();
+        $this->send([$this->item(['external_id' => 'y', 'source_url' => 'http://example.com'])])->assertUnprocessable();
+    }
+
     public function test_validates_the_request_shape(): void
     {
         $this->send([])->assertUnprocessable();

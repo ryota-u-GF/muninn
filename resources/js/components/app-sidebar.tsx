@@ -40,10 +40,10 @@ export function AppSidebar() {
         { title: '議事録', href: '/minutes', icon: NotebookPen },
         { title: '変更履歴', href: '/history', icon: History },
     ];
-    // メールは社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
+    // 候補（メール・議事録から見つけたタスク）は社内メンバーだけ（外注には出さない）。未確認の候補の件数を添える。
     if (internal) {
         docs.unshift({
-            title: 'メール',
+            title: '候補',
             href: '/imports',
             icon: Mail,
             badge: pendingMail,

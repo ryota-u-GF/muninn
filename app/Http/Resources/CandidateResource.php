@@ -28,6 +28,8 @@ class CandidateResource extends JsonResource
                 'kind' => $this->mailMessage->kind,
                 'url' => $this->mailMessage->openUrl(),
             ],
+            // 外部システムから受け取った候補の、元のメール・議事録へのリンク
+            'source_url' => $this->source_url,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

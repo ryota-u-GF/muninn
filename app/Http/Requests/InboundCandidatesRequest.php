@@ -30,6 +30,7 @@ class InboundCandidatesRequest extends FormRequest
             'items.*.project_id' => ['nullable', 'integer'],
             'items.*.assignee_emails' => ['nullable', 'array', 'max:20'],
             'items.*.assignee_emails.*' => ['string', 'max:255'],
+            'items.*.source_url' => ['nullable', 'string', 'url:https', 'max:2048'],
             'items.*.start_date' => ['nullable', 'string', 'max:20'],
             'items.*.due_date' => ['nullable', 'string', 'max:20'],
             'items.*.source_type' => ['nullable', 'string', 'max:20'],

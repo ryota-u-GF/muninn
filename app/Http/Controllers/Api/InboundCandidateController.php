@@ -46,7 +46,7 @@ class InboundCandidateController extends Controller
         $item['unmatched_assignees'] = array_values(array_diff($emails, $found->pluck('email')->all()));
         $item['source_type'] = $item['source_type'] ?? 'other';
 
-        $candidate = $this->imports->createInbound($owner, $item, (string) $item['external_id']);
+        $candidate = $this->imports->createInbound($owner, $item, (string) $item['external_id'], $item['source_url'] ?? null);
 
         return $candidate === null
             ? ['result' => 'duplicate']
