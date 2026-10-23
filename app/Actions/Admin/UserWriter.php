@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\RevisionRecorder;
 use App\Services\VersionedWriter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -78,6 +79,37 @@ class UserWriter
         });
     }
 
+    /**
+     * パスワードを設定・再設定する。本人・他人のどちらでも、既存セッションを失効させる。
+     * 操作者自身の今のセッションだけは $keepSessionId で残せる（呼び出し側で版を更新し直す）。
+     * 履歴にはハッシュを残さず、設定済みかどうかだけを記録する。
+     */
+    public function setPassword(?User $actor, int $id, string $password, int $expectedRevision, ?string $keepSessionId = null): User
+    {
+        return DB::transaction(function () use ($actor, $id, $password, $expectedRevision, $keepSessionId) {
+            /** @var User $user */
+            $user = $this->writer->lock(User::class, $id, $expectedRevision);
+            $before = $this->snapshot($user);
+
+            // 条件付き UPDATE はモデルのキャストを通らないので、ここで明示的にハッシュ化する
+            $this->writer->update($user, $expectedRevision, [
+                'password' => Hash::make($password),
+                'session_version' => $user->session_version + 1,
+            ]);
+
+            $sessions = DB::table('sessions')->where('user_id', $id);
+            if ($keepSessionId !== null) {
+                $sessions->where('id', '!=', $keepSessionId);
+            }
+            $sessions->delete();
+
+            $fresh = User::query()->findOrFail($id);
+            $this->revisions->audit('user', $id, 'password_set', $actor, $before, $this->snapshot($fresh));
+
+            return $fresh;
+        });
+    }
+
     /** @return array<string, mixed> */
     private function snapshot(User $user): array
     {
@@ -85,6 +117,7 @@ class UserWriter
             'name' => $user->name,
             'role' => $user->role->value,
             'is_active' => $user->is_active,
+            'password_set' => $user->hasPassword(),
         ];
     }
 }

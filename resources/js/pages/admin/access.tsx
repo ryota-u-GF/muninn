@@ -4,6 +4,14 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { ErrorBanner, Loading, Page } from '@/components/gf/page';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/textarea';
@@ -32,8 +40,11 @@ type AdminUser = {
     role_label: string;
     is_active: boolean;
     google_linked: boolean;
+    password_set: boolean;
     revision: number;
 };
+
+const PASSWORD_MIN_LENGTH = 12;
 
 const PERMISSION_LABELS: Record<Permission, string> = {
     none: '権限なし',
@@ -72,6 +83,8 @@ export default function AdminAccess() {
     const [pending, setPending] = useState<Pending | null>(null);
     const [busy, setBusy] = useState(false);
     const [adding, setAdding] = useState(false);
+    const [pwTarget, setPwTarget] = useState<AdminUser | null>(null);
+    const [pw, setPw] = useState({ password: '', confirmation: '' });
     const [newUser, setNewUser] = useState({
         name: '',
         email: '',
@@ -155,6 +168,44 @@ export default function AdminAccess() {
             setBusy(false);
         }
     };
+
+    const closePassword = () => {
+        setPwTarget(null);
+        setPw({ password: '', confirmation: '' });
+    };
+
+    const savePassword = async () => {
+        if (!pwTarget) return;
+        setBusy(true);
+        try {
+            await api('PUT', `/api/users/${pwTarget.id}/password`, {
+                password: pw.password,
+                password_confirmation: pw.confirmation,
+                expected_revision: pwTarget.revision,
+            });
+            toast.success(
+                pwTarget.id === auth.user?.id
+                    ? 'パスワードを設定しました（他の端末のセッションは失効しました）'
+                    : 'パスワードを設定しました（ログイン中のセッションは失効しました）',
+            );
+            closePassword();
+        } catch (e) {
+            toast.error(
+                e instanceof ApiError
+                    ? e.isConflict
+                        ? '他の管理者が先に変更しました。最新の状態を読み込みました。'
+                        : e.firstError()
+                    : 'パスワードの設定に失敗しました。',
+            );
+        } finally {
+            setBusy(false);
+            await load();
+        }
+    };
+
+    const passwordInvalid =
+        pw.password.length < PASSWORD_MIN_LENGTH ||
+        pw.password !== pw.confirmation;
 
     return (
         <Page title="担当者・権限（管理者）">
@@ -357,6 +408,17 @@ export default function AdminAccess() {
                                                                 ? '無効にする'
                                                                 : '有効にする'}
                                                         </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() =>
+                                                                setPwTarget(u)
+                                                            }
+                                                        >
+                                                            {u.password_set
+                                                                ? 'パスワード変更'
+                                                                : 'パスワード設定'}
+                                                        </Button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -475,6 +537,81 @@ export default function AdminAccess() {
                     )}
                 </>
             )}
+            <Dialog
+                open={pwTarget !== null}
+                onOpenChange={(o) => !o && !busy && closePassword()}
+            >
+                <DialogContent>
+                    <form
+                        className="grid gap-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (!passwordInvalid) void savePassword();
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>
+                                {pwTarget?.name} のパスワード
+                            </DialogTitle>
+                            <DialogDescription>
+                                {PASSWORD_MIN_LENGTH}文字以上で設定します。
+                                {pwTarget?.id === auth.user?.id
+                                    ? '設定すると、他の端末のセッションは失効します。'
+                                    : '設定すると、この利用者のログイン中のセッションは失効します。'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-1">
+                            <Label htmlFor="pw-new">新しいパスワード</Label>
+                            <Input
+                                id="pw-new"
+                                type="password"
+                                autoComplete="new-password"
+                                value={pw.password}
+                                onChange={(e) =>
+                                    setPw({ ...pw, password: e.target.value })
+                                }
+                            />
+                        </div>
+                        <div className="grid gap-1">
+                            <Label htmlFor="pw-confirm">確認用</Label>
+                            <Input
+                                id="pw-confirm"
+                                type="password"
+                                autoComplete="new-password"
+                                value={pw.confirmation}
+                                onChange={(e) =>
+                                    setPw({
+                                        ...pw,
+                                        confirmation: e.target.value,
+                                    })
+                                }
+                            />
+                            {pw.confirmation !== '' &&
+                                pw.password !== pw.confirmation && (
+                                    <p className="text-xs text-red-700 dark:text-red-300">
+                                        確認用のパスワードが一致しません。
+                                    </p>
+                                )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={closePassword}
+                                disabled={busy}
+                            >
+                                キャンセル
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={busy || passwordInvalid}
+                            >
+                                {busy ? '処理中…' : '設定する'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
             <ConfirmDialog
                 open={pending !== null}
                 title="変更を確認してください"

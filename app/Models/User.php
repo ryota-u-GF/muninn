@@ -14,6 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string|null $password
  * @property Role $role
  * @property bool $is_active
  * @property string|null $google_id
@@ -27,11 +28,12 @@ class User extends Authenticatable
 
     protected $fillable = ['name', 'email', 'role', 'is_active'];
 
-    protected $hidden = ['remember_token', 'google_id', 'session_version'];
+    protected $hidden = ['password', 'remember_token', 'google_id', 'session_version'];
 
     protected function casts(): array
     {
         return [
+            'password' => 'hashed',
             'role' => Role::class,
             'is_active' => 'boolean',
             'session_version' => 'integer',
@@ -60,10 +62,10 @@ class User extends Authenticatable
         return $this->role === Role::Tv;
     }
 
-    /** パスワードは保持しない（Google／開発デモのみ） */
-    public function getAuthPassword(): string
+    /** 管理者がパスワードを設定した利用者だけが、パスワードでログインできる */
+    public function hasPassword(): bool
     {
-        return '';
+        return $this->password !== null && $this->password !== '';
     }
 
     /** @return HasMany<ProjectAccess, $this> */
