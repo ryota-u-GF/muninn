@@ -33,6 +33,11 @@ Artisan::command('gf:user {email} {--name=} {--role=employee : admin|employee|co
 
             return 1;
         }
+        if (SetPasswordRequest::bytesError($password) !== null) {
+            $this->error(SetPasswordRequest::bytesError($password));
+
+            return 1;
+        }
         if ($password !== (string) $this->secret('パスワード（確認）')) {
             $this->error('確認用のパスワードが一致しません。');
 

@@ -18,6 +18,8 @@ use Inertia\Response;
 
 class LoginController extends Controller
 {
+    private static ?string $dummyHash = null;
+
     public function show(Request $request): Response
     {
         return Inertia::render('auth/login', [
@@ -56,17 +58,27 @@ class LoginController extends Controller
         $user = User::query()->where('email', mb_strtolower($request->validated('email')))->first();
         $submitted = $request->validated('password');
 
-        // 利用者の有無で処理時間が変わらないよう、見つからなくても必ずハッシュ照合を行う
-        $hash = $user?->hasPassword() ? $user->password : Hash::make(Str::random(32));
-        $matched = Hash::check($submitted, $hash);
+        // 利用者の有無・パスワード設定の有無で処理時間が変わらないよう、照合は必ず1回だけ行う
+        $matched = Hash::check($submitted, $user?->hasPassword() ? $user->password : self::dummyHash());
 
         if ($user === null || ! $user->is_active || ! $user->hasPassword() || ! $matched) {
             return back()->with('error', 'メールアドレスまたはパスワードが違います。');
         }
 
+        // ハッシュの強度設定を上げたとき、ログイン成功のタイミングで保存済みのハッシュも作り直す
+        if (Hash::needsRehash($user->password)) {
+            $user->forceFill(['password' => $submitted])->saveQuietly();
+        }
+
         SessionLogin::login($request, $user);
 
         return redirect()->intended($user->role === Role::Tv ? route('tv.page') : route('board'));
+    }
+
+    /** 存在しない利用者の照合に使う、実在のハッシュと同じ強度のダミー（プロセスごとに1回だけ作る） */
+    private static function dummyHash(): string
+    {
+        return self::$dummyHash ??= Hash::make(Str::random(32));
     }
 
     public function logout(Request $request): RedirectResponse

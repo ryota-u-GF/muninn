@@ -9,6 +9,7 @@ use App\Http\Requests\SetPasswordRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
+use App\Support\SessionLogin;
 use Illuminate\Http\JsonResponse;
 
 /** 管理者用：利用者の登録・役割変更・無効化 */
@@ -39,12 +40,21 @@ class UserController extends Controller
 
     public function setPassword(SetPasswordRequest $request, int $user, UserWriter $writer): JsonResponse
     {
+        $self = $request->user()->id === $user;
+
         $updated = $writer->setPassword(
             $request->user(),
             $user,
             $request->validated('password'),
             (int) $request->validated('expected_revision'),
+            $self ? $request->session()->getId() : null,
         );
+
+        if ($self) {
+            // 自分のパスワード変更：他の端末は失効し、この端末だけが新しい版で続行する（セッションIDも更新）
+            $request->session()->put(SessionLogin::VERSION_KEY, $updated->session_version);
+            $request->session()->migrate(true);
+        }
 
         return response()->json(['data' => $this->present($updated)]);
     }

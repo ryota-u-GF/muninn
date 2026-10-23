@@ -185,7 +185,7 @@ export default function AdminAccess() {
             });
             toast.success(
                 pwTarget.id === auth.user?.id
-                    ? 'パスワードを設定しました'
+                    ? 'パスワードを設定しました（他の端末のセッションは失効しました）'
                     : 'パスワードを設定しました（ログイン中のセッションは失効しました）',
             );
             closePassword();
@@ -555,8 +555,9 @@ export default function AdminAccess() {
                             </DialogTitle>
                             <DialogDescription>
                                 {PASSWORD_MIN_LENGTH}文字以上で設定します。
-                                {pwTarget?.id !== auth.user?.id &&
-                                    '設定すると、この利用者のログイン中のセッションは失効します。'}
+                                {pwTarget?.id === auth.user?.id
+                                    ? '設定すると、他の端末のセッションは失効します。'
+                                    : '設定すると、この利用者のログイン中のセッションは失効します。'}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-1">

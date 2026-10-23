@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Revision;
 use App\Models\User;
+use App\Support\SessionLogin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class PasswordLoginTest extends TestCase
@@ -85,6 +88,33 @@ class PasswordLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_throttle_key_is_the_matched_user_not_the_typed_spelling(): void
+    {
+        $user = $this->userWithPassword();
+        $limits = fn (string $email) => RateLimiter::limiter('password-login')(Request::create('/password-login', 'POST', ['email' => $email]));
+
+        $this->assertSame('uid:'.$user->id, $limits($user->email)[1]->key);
+        $this->assertSame('uid:'.$user->id, $limits(mb_strtoupper($user->email))[1]->key);
+        $this->assertSame('email:nobody@example.test', $limits('Nobody@example.test')[1]->key);
+        $this->assertSame('email:', $limits('')[1]->key);
+    }
+
+    public function test_hash_is_upgraded_on_login_when_the_configured_cost_rises(): void
+    {
+        $user = User::factory()->create();
+        DB::table('users')->where('id', $user->id)->update(['password' => password_hash(self::PASSWORD, PASSWORD_BCRYPT, ['cost' => 4])]);
+        $old = $user->fresh()->password;
+
+        config(['hashing.bcrypt.rounds' => 5]);
+        Hash::forgetDrivers();
+        $this->post('/password-login', ['email' => $user->email, 'password' => self::PASSWORD])->assertRedirect('/');
+
+        $new = $user->fresh();
+        $this->assertNotSame($old, $new->password);
+        $this->assertTrue(Hash::check(self::PASSWORD, $new->password));
+        $this->assertSame(1, $new->revision);
+    }
+
     public function test_login_page_is_served_with_the_password_form_available_in_production(): void
     {
         $this->app->detectEnvironment(fn () => 'production');
@@ -115,20 +145,39 @@ class PasswordLoginTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_setting_anothers_password_revokes_their_sessions_but_not_for_yourself(): void
+    public function test_setting_anothers_password_revokes_their_sessions(): void
     {
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
         DB::table('sessions')->insert(['id' => 'other-session', 'user_id' => $user->id, 'payload' => '', 'last_activity' => time()]);
-        $payload = ['password' => self::PASSWORD, 'password_confirmation' => self::PASSWORD];
 
-        $this->loginAs($admin)->putJson("/api/users/{$user->id}/password", $payload + ['expected_revision' => 1])->assertOk();
+        $this->loginAs($admin)->putJson("/api/users/{$user->id}/password", [
+            'expected_revision' => 1,
+            'password' => self::PASSWORD,
+            'password_confirmation' => self::PASSWORD,
+        ])->assertOk();
 
         $this->assertSame(2, $user->fresh()->session_version);
         $this->assertDatabaseMissing('sessions', ['id' => 'other-session']);
-
-        $this->putJson("/api/users/{$admin->id}/password", $payload + ['expected_revision' => 1])->assertOk();
         $this->assertSame(1, $admin->fresh()->session_version);
+    }
+
+    public function test_changing_your_own_password_revokes_other_devices_but_keeps_this_one(): void
+    {
+        $admin = User::factory()->admin()->create();
+        DB::table('sessions')->insert(['id' => 'other-device', 'user_id' => $admin->id, 'payload' => '', 'last_activity' => time()]);
+
+        $this->loginAs($admin)->putJson("/api/users/{$admin->id}/password", [
+            'expected_revision' => 1,
+            'password' => self::PASSWORD,
+            'password_confirmation' => self::PASSWORD,
+        ])->assertOk()->assertSessionHas(SessionLogin::VERSION_KEY, 2);
+
+        $this->assertSame(2, $admin->fresh()->session_version);
+        $this->assertDatabaseMissing('sessions', ['id' => 'other-device']);
+        // この端末は新しい版を持ち直している。古い版のセッション（盗まれた側）は拒否される
+        $this->flushSession();
+        $this->actingAs($admin->fresh())->withSession([SessionLogin::VERSION_KEY => 1])->getJson('/api/users')->assertUnauthorized();
     }
 
     public function test_password_rules_are_enforced(): void
@@ -142,6 +191,22 @@ class PasswordLoginTest extends TestCase
         $this->putJson("/api/users/{$user->id}/password", ['expected_revision' => 1, 'password' => self::PASSWORD, 'password_confirmation' => 'different-password'])
             ->assertUnprocessable()->assertJsonValidationErrors('password');
         $this->assertNull($user->fresh()->password);
+    }
+
+    public function test_passwords_longer_than_72_bytes_are_rejected(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+        $this->loginAs($admin);
+        $send = fn (string $password) => $this->putJson("/api/users/{$user->id}/password", [
+            'expected_revision' => 1,
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]);
+
+        $send(str_repeat('a', 73))->assertUnprocessable()->assertJsonValidationErrors('password');
+        $send(str_repeat('あ', 25))->assertUnprocessable()->assertJsonValidationErrors('password');
+        $send(str_repeat('a', 72))->assertOk();
     }
 
     public function test_stale_revision_is_rejected_with_conflict(): void
@@ -159,14 +224,20 @@ class PasswordLoginTest extends TestCase
 
     public function test_only_admins_can_set_passwords(): void
     {
-        $employee = User::factory()->create();
         $user = User::factory()->create();
 
-        $this->loginAs($employee)->putJson("/api/users/{$user->id}/password", [
+        foreach ([User::factory()->create(), User::factory()->contractor()->create(), User::factory()->tv()->create()] as $actor) {
+            $this->loginAs($actor)->putJson("/api/users/{$user->id}/password", [
+                'expected_revision' => 1,
+                'password' => self::PASSWORD,
+                'password_confirmation' => self::PASSWORD,
+            ])->assertForbidden();
+        }
+        $this->loginAs(User::factory()->admin()->inactive()->create())->putJson("/api/users/{$user->id}/password", [
             'expected_revision' => 1,
             'password' => self::PASSWORD,
             'password_confirmation' => self::PASSWORD,
-        ])->assertForbidden();
+        ])->assertUnauthorized();
         $this->assertNull($user->fresh()->password);
     }
 
@@ -223,6 +294,11 @@ class PasswordLoginTest extends TestCase
             ->expectsQuestion('パスワード（確認）', 'different-password')
             ->assertFailed();
 
+        $this->artisan('gf:user', ['email' => 'long@example.test', '--password' => true])
+            ->expectsQuestion('パスワード（12文字以上）', str_repeat('a', 73))
+            ->assertFailed();
+
+        $this->assertDatabaseMissing('users', ['email' => 'long@example.test']);
         $this->assertDatabaseMissing('users', ['email' => 'short@example.test']);
         $this->assertDatabaseMissing('users', ['email' => 'mismatch@example.test']);
     }
