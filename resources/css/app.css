@@ -62,39 +62,39 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: oklch(0.965 0.006 90);
+    --foreground: oklch(0.24 0.04 275);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.24 0.04 275);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.24 0.04 275);
+    --primary: oklch(0.29 0.06 273);
+    --primary-foreground: oklch(0.97 0.006 90);
+    --secondary: oklch(0.935 0.01 90);
+    --secondary-foreground: oklch(0.29 0.06 273);
+    --muted: oklch(0.935 0.01 90);
+    --muted-foreground: oklch(0.53 0.045 275);
+    --accent: oklch(0.935 0.01 90);
+    --accent-foreground: oklch(0.29 0.06 273);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
+    --border: oklch(0.89 0.012 90);
+    --input: oklch(0.89 0.012 90);
+    --ring: oklch(0.73 0.1 85);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --sidebar: oklch(0.29 0.06 273);
+    --sidebar-foreground: oklch(0.84 0.02 275);
+    --sidebar-primary: oklch(0.82 0.1 88);
+    --sidebar-primary-foreground: oklch(0.29 0.06 273);
+    --sidebar-accent: oklch(0.37 0.07 273);
+    --sidebar-accent-foreground: oklch(0.86 0.1 88);
+    --sidebar-border: oklch(0.37 0.05 273);
+    --sidebar-ring: oklch(0.73 0.1 85);
 }
 
 .dark {
@@ -139,6 +139,86 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* 画面表示の動き：ページ全体はふわっと現れ、カードは少しずつ遅れて続く */
+@keyframes gf-rise {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gf-page-enter {
+    animation: gf-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.gf-rise {
+    animation: gf-rise 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.gf-rise:nth-child(2) {
+    animation-delay: 40ms;
+}
+.gf-rise:nth-child(3) {
+    animation-delay: 80ms;
+}
+.gf-rise:nth-child(4) {
+    animation-delay: 120ms;
+}
+.gf-rise:nth-child(5) {
+    animation-delay: 160ms;
+}
+.gf-rise:nth-child(n + 6) {
+    animation-delay: 200ms;
+}
+
+/* 件数やチェックが変わったときの、ぽんっと弾む動き */
+@keyframes gf-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.25);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.gf-pop {
+    display: inline-block;
+    animation: gf-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+/* ログイン画面のロゴ：ゆっくり上下に漂う */
+@keyframes gf-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.gf-float {
+    animation: gf-float 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gf-page-enter,
+    .gf-rise,
+    .gf-pop,
+    .gf-float {
+        animation: none;
     }
 }
 
