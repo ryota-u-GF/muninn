@@ -4,22 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Imports\ImportService;
 use App\Enums\CandidateStatus;
-use App\Enums\ExtractKind;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmImportRequest;
-use App\Http\Requests\ExtractImportRequest;
 use App\Http\Requests\ImportJsonRequest;
 use App\Http\Requests\UpdateCandidateRequest;
 use App\Http\Resources\CandidateResource;
 use App\Models\ImportCandidate;
-use App\Services\Ai\AiNotConfiguredException;
-use App\Services\Ai\AiRequestFailedException;
-use App\Services\Ai\TaskExtractor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
-/** メール（旧AI候補）の候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
+/** メール・議事録から見つけたタスクの候補（本人限定）。社内メンバーのみ（ルートの Gate で確認）。 */
 class ImportController extends Controller
 {
     public function __construct(private ImportService $imports) {}
@@ -37,14 +31,20 @@ class ImportController extends Controller
         ]);
     }
 
-    /** サイドバーに出す、未確認の候補の件数（本人分のみ）。 */
+    /** サイドバーに出す、未確認の候補の件数（本人分のみ）。メールと議事録に分けて返す。 */
     public function pendingCount(Request $request): JsonResponse
     {
+        $kinds = ImportCandidate::query()->with('mailMessage')
+            ->where('owner_id', $request->user()->id)
+            ->where('status', CandidateStatus::Pending->value)
+            ->get()->map(fn (ImportCandidate $candidate) => $candidate->kind());
+
+        $minutes = $kinds->filter(fn (string $kind) => $kind === 'minutes')->count();
+
         return response()->json(['data' => [
-            'count' => ImportCandidate::query()
-                ->where('owner_id', $request->user()->id)
-                ->where('status', CandidateStatus::Pending->value)
-                ->count(),
+            'count' => $kinds->count(),
+            'mail' => $kinds->count() - $minutes,
+            'minutes' => $minutes,
         ]]);
     }
 
@@ -55,23 +55,6 @@ class ImportController extends Controller
 
         return CandidateResource::collection($this->imports->createCandidates($request->user(), 'manual_json', $items))
             ->response()->setStatusCode(201);
-    }
-
-    /** 貼り付けた文章から、本人の AI で候補を作る（文章は保存しない）。 */
-    public function extract(ExtractImportRequest $request, TaskExtractor $extractor): JsonResponse
-    {
-        $kind = ExtractKind::tryFrom((string) $request->validated('kind')) ?? ExtractKind::Mail;
-
-        try {
-            $items = $extractor->extract($request->user(), (string) $request->validated('text'), $kind);
-        } catch (AiNotConfiguredException|AiRequestFailedException $e) {
-            throw ValidationException::withMessages(['ai' => $e->getMessage()]);
-        }
-
-        $source = $kind === ExtractKind::Minutes ? 'ai_minutes' : 'ai_text';
-        $candidates = $items === [] ? [] : $this->imports->createCandidates($request->user(), $source, $items);
-
-        return CandidateResource::collection($candidates)->response()->setStatusCode(201);
     }
 
     public function update(UpdateCandidateRequest $request, int $candidate): CandidateResource

@@ -11,6 +11,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PrivateBadge } from '@/components/gf/badges';
+import { CandidateInbox } from '@/components/gf/candidate-inbox';
 import { ConfirmDialog } from '@/components/gf/confirm-dialog';
 import { HistoryDialog } from '@/components/gf/history-dialog';
 import { Empty, ErrorBanner, Loading, Page } from '@/components/gf/page';
@@ -416,6 +417,12 @@ export default function Documents({ kind }: { kind: DocumentKind }) {
                 </>
             }
         >
+            {kind === 'minutes' && internal && (
+                <section className="rounded-md border p-3">
+                    <h2 className="mb-2 font-semibold">議事録のタスク候補</h2>
+                    <CandidateInbox kind="minutes" />
+                </section>
+            )}
             <div className="flex flex-wrap items-end gap-2 text-sm">
                 <div className="relative">
                     <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />

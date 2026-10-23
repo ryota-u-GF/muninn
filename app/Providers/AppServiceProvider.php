@@ -3,8 +3,6 @@
 namespace App\Providers;
 
 use App\Models\User;
-use App\Services\Ai\AnthropicTaskExtractor;
-use App\Services\Ai\TaskExtractor;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -16,11 +14,6 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        $this->app->bind(TaskExtractor::class, AnthropicTaskExtractor::class);
-    }
-
     public function boot(): void
     {
         Date::use(CarbonImmutable::class);
@@ -62,12 +55,8 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
         RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()->id ?? $request->ip())));
-        // AI の呼び出し（費用がかかるため、利用者ごとに 1 分 10 回まで）
-        RateLimiter::for('ai', fn (Request $request) => Limit::perMinute(10)->by((string) ($request->user()->id ?? $request->ip())));
-        // Gmail の取得（1 回の呼び出しで AI を複数回使うため、利用者ごとに 1 分 12 回まで）
-        RateLimiter::for('gmail-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
-        // Meet のメモの取得（Gmail と同じく、利用者ごとに 1 分 12 回まで）
-        RateLimiter::for('meet-sync', fn (Request $request) => Limit::perMinute(12)->by((string) ($request->user()->id ?? $request->ip())));
+        // 外部システムからの候補の受け取り（トークン単位ではなく IP 単位で 1 分 60 回まで）
+        RateLimiter::for('inbound', fn (Request $request) => Limit::perMinute(60)->by('ip:'.$request->ip()));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(20)->by((string) ($request->user()->id ?? $request->ip())));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(600)->by((string) ($request->user()->id ?? $request->ip())));
     }

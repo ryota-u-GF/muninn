@@ -199,4 +199,21 @@ class ImportTest extends TestCase
         // 外注は使えない
         $this->loginAs($this->c1)->getJson('/api/imports/pending-count')->assertForbidden();
     }
+
+    public function test_candidates_are_split_into_mail_and_minutes(): void
+    {
+        $this->importJson([
+            ['title' => 'メールの件', 'source_type' => 'email'],
+            ['title' => '手で追加', 'source_type' => 'manual'],
+            ['title' => '議事録の件', 'source_type' => 'minutes'],
+        ]);
+
+        $kinds = collect($this->getJson('/api/imports')->assertOk()->json('data'))->pluck('kind', 'payload.title');
+        $this->assertSame('mail', $kinds['メールの件']);
+        $this->assertSame('mail', $kinds['手で追加']);
+        $this->assertSame('minutes', $kinds['議事録の件']);
+
+        $this->getJson('/api/imports/pending-count')->assertOk()
+            ->assertJsonPath('data.count', 3)->assertJsonPath('data.mail', 2)->assertJsonPath('data.minutes', 1);
+    }
 }
