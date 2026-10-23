@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PasswordLoginRequest;
 use App\Models\User;
 use App\Support\DemoMode;
 use App\Support\GoogleLogin;
 use App\Support\SessionLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,6 +40,28 @@ class LoginController extends Controller
         $user = User::query()->whereKey($data['user_id'])->where('is_active', true)->first();
         if ($user === null) {
             return back()->with('error', '利用できないアカウントです。');
+        }
+
+        SessionLogin::login($request, $user);
+
+        return redirect()->intended($user->role === Role::Tv ? route('tv.page') : route('board'));
+    }
+
+    /**
+     * メールアドレスとパスワードでログインする。
+     * 失敗の理由（未登録・無効・パスワード未設定・不一致）は区別せず、同じメッセージにする。
+     */
+    public function password(PasswordLoginRequest $request): RedirectResponse
+    {
+        $user = User::query()->where('email', mb_strtolower($request->validated('email')))->first();
+        $submitted = $request->validated('password');
+
+        // 利用者の有無で処理時間が変わらないよう、見つからなくても必ずハッシュ照合を行う
+        $hash = $user?->hasPassword() ? $user->password : Hash::make(Str::random(32));
+        $matched = Hash::check($submitted, $hash);
+
+        if ($user === null || ! $user->is_active || ! $user->hasPassword() || ! $matched) {
+            return back()->with('error', 'メールアドレスまたはパスワードが違います。');
         }
 
         SessionLogin::login($request, $user);

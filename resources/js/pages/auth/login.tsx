@@ -1,6 +1,8 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
 type DemoUser = { id: number; name: string; role: string; role_label: string };
@@ -17,11 +19,12 @@ export default function Login({
     error?: string | null;
 }) {
     const [busy, setBusy] = useState(false);
+    const form = useForm({ email: '', password: '' });
 
     return (
         <AuthLayout
             title="業務アプリ"
-            description="会社の Google アカウントでログインしてください"
+            description="メールアドレスとパスワード、または Google アカウントでログインしてください"
         >
             <Head title="ログイン" />
             <div className="flex flex-col gap-6">
@@ -33,6 +36,60 @@ export default function Login({
                         {error}
                     </div>
                 )}
+
+                <form
+                    className="space-y-3"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        form.post('/password-login', {
+                            onFinish: () => form.reset('password'),
+                        });
+                    }}
+                >
+                    <div className="space-y-1">
+                        <Label htmlFor="email">メールアドレス</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            autoComplete="username"
+                            required
+                            value={form.data.email}
+                            onChange={(e) =>
+                                form.setData('email', e.target.value)
+                            }
+                        />
+                        {form.errors.email && (
+                            <p className="text-xs text-red-700 dark:text-red-300">
+                                {form.errors.email}
+                            </p>
+                        )}
+                    </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="password">パスワード</Label>
+                        <Input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            required
+                            value={form.data.password}
+                            onChange={(e) =>
+                                form.setData('password', e.target.value)
+                            }
+                        />
+                        {form.errors.password && (
+                            <p className="text-xs text-red-700 dark:text-red-300">
+                                {form.errors.password}
+                            </p>
+                        )}
+                    </div>
+                    <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={form.processing}
+                    >
+                        ログイン
+                    </Button>
+                </form>
 
                 <div className="space-y-2">
                     {googleConfigured ? (

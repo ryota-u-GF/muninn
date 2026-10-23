@@ -16,7 +16,7 @@ Golden Field 社内向けの単一会社用業務アプリ。共有タスク・�
 | 画面         | React 19 + TypeScript + Inertia 3（Laravel 公式 React Starter Kit `dev-main` から作成） |
 | ビルド       | Vite 8（vite-plus）、Tailwind CSS 4                                                     |
 | DB           | MySQL 8.4（本番想定と同じ種類）。単体テストは SQLite（インメモリ）と MySQL の両方で実行 |
-| 認証         | セッション Cookie + CSRF。本番は Google（Socialite）、開発は環境限定のデモログイン      |
+| 認証         | セッション Cookie + CSRF。メール＋パスワード（管理者が設定）、Google（Socialite）、開発は環境限定のデモログイン |
 | 依存の固定   | `composer.lock` / `package-lock.json`                                                   |
 
 Starter Kit からの主な変更：Fortify（パスワード・2FA・パスキー・新規登録・パスワード再設定）と Wayfinder を撤去、外部フォント（Bunny Fonts）の読み込みを撤去。
@@ -66,10 +66,11 @@ docker compose exec -u sail laravel.test php artisan migrate:fresh --seed   # �
 ```bash
 php artisan gf:user admin@your-company.example --name="管理者名" --role=admin
 php artisan gf:user staff@your-company.example --role=employee      # 役割変更にも使える
+php artisan gf:user admin@your-company.example --role=admin --password   # パスワードも設定（12文字以上。入力は表示されない）
 php artisan gf:user-deactivate staff@your-company.example           # 無効化（既存セッションも失効）
 ```
 
-管理者は画面「担当者・権限」からも、利用者の登録・役割変更・無効化と外注の案件別権限を操作できる。
+管理者は画面「担当者・権限」からも、利用者の登録・役割変更・無効化・パスワードの設定と外注の案件別権限を操作できる。パスワードを設定した利用者だけが、ログイン画面のメール＋パスワードで入れる（他人のパスワードを設定すると、その人のログイン中のセッションは失効する）。
 
 ### デモアカウント（すべて example.test、パスワードなし）
 
@@ -109,7 +110,7 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 
 | 画面                                                                                              | URL             | 利用者               |
 | ------------------------------------------------------------------------------------------------- | --------------- | -------------------- |
-| ログイン（Google 未接続表示／開発用デモ）                                                         | `/login`        | 全員                 |
+| ログイン（メール＋パスワード／Google 未接続表示／開発用デモ）                                     | `/login`        | 全員                 |
 | タスクボード（案件別 3 列、追加・詳細編集・検索・担当者／案件絞込・ドラッグ・古い完了の表示切替） | `/`             | 管理者・社員・外注   |
 | 今日（自分の期限超過・本日期限・進行中）                                                          | `/today`        | 同上                 |
 | 自分のタスク（担当＋自分の非公開）                                                                | `/my-tasks`     | 同上                 |
@@ -180,7 +181,7 @@ TV の時刻は注入時計で試験している（Vitest は時刻を引数で�
 | `POST /imports/confirm` `{idempotency_key, items:[{id, expected_revision}]}`                                                                            | 選択分を原子的にタスク化（公開区分は候補ごとに共有／自分のみ）。同じキーの再送は保存済みの結果（`replayed: true`）                                                                                                    |
 | `GET /tv`                                                                                                                                               | TV 用。`generated_at, today, users[id,name], projects[id,name], tasks[id,title,status,project_id,due_date,assignee_ids]` のみ                                                                                         |
 
-回数制限：ログイン（IP 30 回／分・アカウント 10 回／分）、取り込み 30 回／分、ファイル取込 20 回／分、API 全体 600 回／分。
+回数制限：ログイン（IP 30 回／分・アカウント 10 回／分）、パスワードログイン（IP 30 回／分・メールアドレス 5 回／分）、取り込み 30 回／分、ファイル取込 20 回／分、API 全体 600 回／分。
 
 ---
 

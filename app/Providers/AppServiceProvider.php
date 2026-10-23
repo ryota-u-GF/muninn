@@ -49,6 +49,11 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(30)->by('ip:'.$request->ip()),
             Limit::perMinute(10)->by('acct:'.$request->ip().'|'.$request->integer('user_id')),
         ]);
+        // パスワードログイン：IP 単位で 30 回／分、メールアドレス単位で 5 回／分（総当たり対策）
+        RateLimiter::for('password-login', fn (Request $request) => [
+            Limit::perMinute(30)->by('ip:'.$request->ip()),
+            Limit::perMinute(5)->by('email:'.mb_strtolower((string) $request->input('email'))),
+        ]);
         RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()->id ?? $request->ip())));
         // AI の呼び出し（費用がかかるため、利用者ごとに 1 分 10 回まで）
         RateLimiter::for('ai', fn (Request $request) => Limit::perMinute(10)->by((string) ($request->user()->id ?? $request->ip())));

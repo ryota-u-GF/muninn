@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Admin\UserWriter;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SetPasswordRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
@@ -36,6 +37,18 @@ class UserController extends Controller
         return response()->json(['data' => $this->present($updated)]);
     }
 
+    public function setPassword(SetPasswordRequest $request, int $user, UserWriter $writer): JsonResponse
+    {
+        $updated = $writer->setPassword(
+            $request->user(),
+            $user,
+            $request->validated('password'),
+            (int) $request->validated('expected_revision'),
+        );
+
+        return response()->json(['data' => $this->present($updated)]);
+    }
+
     /** @return array<string, mixed> */
     private function present(User $u): array
     {
@@ -47,6 +60,7 @@ class UserController extends Controller
             'role_label' => $u->role->label(),
             'is_active' => $u->is_active,
             'google_linked' => $u->google_id !== null,
+            'password_set' => $u->hasPassword(),
             'revision' => $u->revision,
         ];
     }

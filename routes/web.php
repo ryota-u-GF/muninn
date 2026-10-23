@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 */
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'show'])->name('login');
+    Route::post('password-login', [LoginController::class, 'password'])->middleware('throttle:password-login')->name('password-login');
     Route::post('demo-login', [LoginController::class, 'demo'])->middleware('throttle:login')->name('demo-login');
     Route::get('auth/google/redirect', [GoogleController::class, 'redirect'])->middleware('throttle:login')->name('google.redirect');
     Route::get('auth/google/callback', [GoogleController::class, 'callback'])->middleware('throttle:login')->name('google.callback');
@@ -120,6 +121,7 @@ Route::middleware('auth')->group(function () {
             Route::get('users', [UserController::class, 'index']);
             Route::post('users', [UserController::class, 'store']);
             Route::patch('users/{user}', [UserController::class, 'update'])->whereNumber('user');
+            Route::put('users/{user}/password', [UserController::class, 'setPassword'])->whereNumber('user')->middleware('throttle:10,1');
         });
     });
 });
